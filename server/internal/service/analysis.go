@@ -2,15 +2,23 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 	"twitocode/chronoflow/internal/db"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/pkoukk/tiktoken-go"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/genai"
+)
+
+// Gemini 3 Flash Preview Pricing per 1M tokens
+const (
+	Gemini3FlashInputPrice  = 0.50
+	Gemini3FlashOutputPrice = 3.00
 )
 
 var systemPrompt string = `
@@ -26,20 +34,10 @@ var systemPrompt string = `
 `
 
 var userPrompt string = `
-    ### RECENT PRICE METRICS
-    Current Price: {{.CurrentPrice}}
-    52-Week High: {{.High52W}}
-    52-Week Low: {{.Low52W}}
-    10-Day Avg Volume: {{.AvgVolume}}
-    Beta (Volatility): {{.Beta}}
-
-    ### NEWS TIMELINE (Last {{.Days}} Days)
-    {{.NewsTimeline}}
-
     ### YOUR TASK
-    Perform a deep analysis of how the news headlines correlate with the price metrics. Look for "catalysts"
-    (earnings, lawsuits, product launches) and determine if the market has already "priced in" this news or if a
-    further move is likely.
+    Perform a deep analysis of how the news headlines correlate with the provided market metrics. 
+    Look for "catalysts" (earnings surprises, technical trends, sentiment shifts) and determine if the 
+    market has already "priced in" this news or if a further move is likely.
 
     ### OUTPUT FORMAT (JSON ONLY)
     {
@@ -68,7 +66,6 @@ func NewAnalysisService(ns *NewsService, ss *StockService, logger *zap.Logger, a
 	})
 
 	if err != nil {
-		//TODO: dont panic
 		panic(err)
 	}
 	return &AnalysisService{
@@ -117,37 +114,71 @@ func (as *AnalysisService) Analyze(ctx context.Context, symbol string) (string, 
 	return res, nil
 }
 
+func (as *AnalysisService) BuildPrompt(stockInfo *StockInfoAggregate, news *[]NewsData) string {
+	m := stockInfo.BasicFinancials.Metric
+		trends := "No recent analyst data"
+
+	if len(stockInfo.RecommendationTrends) > 0 {
+		t := stockInfo.RecommendationTrends[0]
+		trends = fmt.Sprintf("Buy: %d, Strong Buy: %d, Hold: %d, Sell: %d", t.Buy, t.StrongBuy, t.Hold, t.Sell)
+	}
+
+	earnings := "No recent earnings data"
+	if len(stockInfo.CompanyEarnings) > 0 {
+		e := stockInfo.CompanyEarnings[0]
+		earnings = fmt.Sprintf("Last: Actual %.2f vs Est %.2f (Period: %s)", e.Actual, e.Estimate, e.Period)
+	}
+
+	return fmt.Sprintf(`
+    ### MARKET SNAPSHOT: %s
+    PRICE: %.2f | 52W HIGH: %.2f | 52W LOW: %.2f
+    PE: %.2f | PEG: %.2f | BETA: %.2f
+    REV GROWTH: %.2f%% | EPS GROWTH: %.2f%%
+    ANALYST TRENDS: %s
+    EARNINGS: %s
+
+    ### NEWS TIMELINE:
+    %s`,
+		stockInfo.CompanyProfile.Ticker,
+		stockInfo.Quote.C, m["52WeekHigh"], m["52WeekLow"],
+		m["peTTM"], m["pegTTM"], m["beta"],
+		m["revenueGrowthTTMYoy"], m["epsGrowthTTMYoy"],
+		trends, earnings,
+		as.formatNewsForAI(news))
+}
+
+func (as *AnalysisService) formatNewsForAI(news *[]NewsData) string {
+	var res string
+	slice := slices.Values(*news)
+	for x := range slice {
+		res = strings.Join([]string{fmt.Sprintf("[%s] (Sentiment: %.3f) Title: %s", x.PublishedAt, x.Entities[0].SentimentScore, x.Title), res}, "\n")
+	}
+	return res
+}
+
 func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo *StockInfoAggregate, news *[]NewsData) (string, error) {
-	//TODO: based on timespan
 	if x, found := as.cache.Get(symbol); found {
 		return x.(string), nil
 	}
 
-	stockBytes, err := json.Marshal(&stockInfo)
-	if err != nil {
-		panic(fmt.Errorf("Stock Data is malformed %w", err))
-	}
-
-	newsBytes, err := json.Marshal(&news)
-	if err != nil {
-		panic(fmt.Errorf("Stock Data is malformed %w", err))
-	}
-
-	stockJsonString := string(stockBytes)
-	newsJsonString := string(newsBytes)
-
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemPrompt, genai.RoleUser),
 	}
+
+	promptText := as.BuildPrompt(stockInfo, news)
+	fullPrompt := fmt.Sprintf("%s\n%s", userPrompt, promptText)
+
+	inputTokens, _ := as.EstimateTokens(fullPrompt)
+	inputCost := (float64(inputTokens) / 1_000_000.0) * Gemini3FlashInputPrice
+	as.Logger.Debug("Gemini Input Stats",
+		zap.Int("tokens", inputTokens),
+		zap.Float64("cost_usd", inputCost),
+	)
+
 	result, err := as.gemini.Models.GenerateContent(
 		ctx,
 		"gemini-3-flash-preview",
-		genai.Text(fmt.Sprintf(`
-    %s\n
-    STOCK SYMBOL: %s\n
-    STOCK DATA: %s\n
-    NEWS DATA: %s\n
-    `, userPrompt, symbol, stockJsonString, newsJsonString)),
+		genai.Text(fullPrompt),
 		config,
 	)
 
@@ -158,5 +189,24 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 
 	prediction := result.Text()
 	as.cache.Set(symbol, prediction, cache.DefaultExpiration)
+
+	outputTokens, _ := as.EstimateTokens(prediction)
+	outputCost := (float64(outputTokens) / 1_000_000.0) * Gemini3FlashOutputPrice
+	as.Logger.Debug("Gemini Output Stats",
+		zap.Int("tokens", outputTokens),
+		zap.Float64("cost_usd", outputCost),
+		zap.Float64("total_request_cost_usd", inputCost+outputCost),
+	)
+
 	return prediction, nil
+}
+
+func (as *AnalysisService) EstimateTokens(text string) (int, error) {
+	tkm, err := tiktoken.GetEncoding("cl100k_base")
+	if err != nil {
+		return 0, fmt.Errorf("getEncoding: %v", err)
+	}
+
+	tokenIds := tkm.Encode(text, nil, nil)
+	return len(tokenIds), nil
 }

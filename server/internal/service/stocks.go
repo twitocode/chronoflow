@@ -12,6 +12,7 @@ import (
 	"github.com/patrickmn/go-cache"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 )
 
@@ -57,42 +58,76 @@ func (n *StockService) Get(ctx context.Context, symbol string) (*StockInfoAggreg
 	if found {
 		stockInfo = fromCache.(StockInfoAggregate)
 	} else {
-		quote, _, err := n.finnhubClient.Quote(ctx, symbol)
-		if err != nil {
-			n.Logger.Error("something happened with finnhub quote")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
-		}
-		companyProfile, _, err := n.finnhubClient.CompanyProfile2(ctx, &finnhub.CompanyProfile2Opts{
-			Symbol: optional.NewString(symbol),
-		})
-		if err != nil {
-			n.Logger.Error("something happened with finnhub company profile")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
-		}
+		g, errctx := errgroup.WithContext(ctx)
 
-		basicFinancials, _, err := n.finnhubClient.CompanyBasicFinancials(ctx, symbol, "all")
-		if err != nil {
-			n.Logger.Error("something happened with finnhub financials")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
-		}
+		var quote finnhub.Quote
+		var companyProfile finnhub.CompanyProfile2
+		var basicFinancials finnhub.BasicFinancials
+		var recommendedTrends []finnhub.RecommendationTrend
+		var companyEarnings []finnhub.EarningResult
+		var earningsCalendar finnhub.EarningsCalendar
 
-		recommendedTrends, _, err := n.finnhubClient.RecommendationTrends(ctx, symbol)
-		if err != nil {
-			n.Logger.Error("something happened with finnhub recommended trends")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
-		}
-		companyEarnings, _, err := n.finnhubClient.CompanyEarnings(ctx, symbol, &finnhub.CompanyEarningsOpts{})
-		if err != nil {
-			n.Logger.Error("something happened with finnhub earnings")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
-		}
-		earningsCalendar, _, err := n.finnhubClient.EarningsCalendar(ctx, &finnhub.EarningsCalendarOpts{
-			Symbol: optional.NewString(symbol),
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.Quote(errctx, symbol)
+			if err != nil {
+				return fmt.Errorf("quote: %w", err)
+			}
+			quote = res
+			return nil
 		})
 
-		if err != nil {
-			n.Logger.Error("something happened with finnhub recommended trends")
-			return &StockInfoAggregate{}, fmt.Errorf("something happened with getting stock %w", err)
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.CompanyProfile2(errctx, &finnhub.CompanyProfile2Opts{
+				Symbol: optional.NewString(symbol),
+			})
+			if err != nil {
+				return fmt.Errorf("profile: %w", err)
+			}
+			companyProfile = res
+			return nil
+		})
+
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.CompanyBasicFinancials(errctx, symbol, "all")
+			if err != nil {
+				return fmt.Errorf("financials: %w", err)
+			}
+			basicFinancials = res
+			return nil
+		})
+
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.RecommendationTrends(errctx, symbol)
+			if err != nil {
+				return fmt.Errorf("recommendation trends: %w", err)
+			}
+			recommendedTrends = res
+			return nil
+		})
+
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.CompanyEarnings(errctx, symbol, &finnhub.CompanyEarningsOpts{})
+			if err != nil {
+				return fmt.Errorf("earnings: %w", err)
+			}
+			companyEarnings = res
+			return nil
+		})
+
+		g.Go(func() error {
+			res, _, err := n.finnhubClient.EarningsCalendar(errctx, &finnhub.EarningsCalendarOpts{
+				Symbol: optional.NewString(symbol),
+			})
+			if err != nil {
+				return fmt.Errorf("earnings calendar: %w", err)
+			}
+			earningsCalendar = res
+			return nil
+		})
+
+		if err := g.Wait(); err != nil {
+			n.Logger.Error("finnhub fetch failed", zap.Error(err))
+			return &StockInfoAggregate{}, fmt.Errorf("failed to get stock data: %w", err)
 		}
 
 		stockInfo = StockInfoAggregate{
@@ -103,6 +138,7 @@ func (n *StockService) Get(ctx context.Context, symbol string) (*StockInfoAggreg
 			CompanyEarnings:      companyEarnings,
 			EarningsCalendar:     earningsCalendar,
 		}
+		n.cache.Set(symbol, stockInfo, cache.DefaultExpiration)
 	}
 	return &stockInfo, nil
 }

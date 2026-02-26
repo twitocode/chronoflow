@@ -14,11 +14,25 @@ import (
 func HandleCheckEmail(as *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		as.Logger.Info("handling email check")
+		
 		email := chi.URLParam(r, "email")
+		if email == "" {
+			email = r.URL.Query().Get("email")
+		}
+
+		isUniqueRequest := r.URL.Query().Get("unique") == "true"
 
 		result, err := as.FindByEmail(r.Context(), email)
 		if err != nil {
 			if errors.Is(err, service.ErrUserNotFound) {
+				if isUniqueRequest {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"data": true,
+					})
+					return
+				}
 				SendError(w, http.StatusNotFound, "User not found")
 				return
 			}
@@ -29,8 +43,14 @@ func HandleCheckEmail(as *service.AuthService) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		
+		data := result
+		if isUniqueRequest {
+			data = !result
+		}
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"data": result,
+			"data": data,
 		})
 	}
 }
@@ -38,6 +58,7 @@ func HandleCheckEmail(as *service.AuthService) http.HandlerFunc {
 type SignupDTO struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Unique   bool   `json:"unique"`
 }
 
 func HandleSignup(as *service.AuthService) http.HandlerFunc {
@@ -55,17 +76,13 @@ func HandleSignup(as *service.AuthService) http.HandlerFunc {
 			return
 		}
 
-		exists, err := as.FindByEmail(r.Context(), dto.Email)
-		if err != nil {
-			as.Logger.Error("failed to check if user exists with email", zap.String("email", dto.Email), zap.Error(err))
-      SendError(w, http.StatusInternalServerError, "Failed to check email eligibility")
-      return
+		if dto.Unique {
+			exists, _ := as.FindByEmail(r.Context(), dto.Email)
+			if exists {
+				SendError(w, http.StatusConflict, "User already exists")
+				return
+			}
 		}
-
-    if exists {
-      SendError(w, http.StatusBadRequest, "User already exists")
-      return
-    }
 
 		hashedPass, err := as.HashPassword(dto.Password)
 		if err != nil {
