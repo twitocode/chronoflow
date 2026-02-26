@@ -1,14 +1,15 @@
 package app
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
-	"twitocode/chronoflow/internal/config"
 	"twitocode/chronoflow/internal/handlers"
-	"twitocode/chronoflow/internal/service"
 )
 
-func addRoutes(router *gin.Engine, config *config.Config, newsService *service.NewsService) {
-	router.POST("/oauth2/callback", handlers.HandleOAuth2(config))
-	router.GET("/news", handlers.HandleStockNews(config, newsService))
+func addRoutes(r *chi.Mux, services *Services) {
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/news", handlers.HandleStockNews(services.News))
+		r.Get("/auth/{email}", handlers.HandleCheckEmail(services.Auth))
+		r.Post("/auth/signup", handlers.HandleSignup(services.Auth))
+	})
 }

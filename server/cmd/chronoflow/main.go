@@ -2,78 +2,72 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
 	"twitocode/chronoflow/internal/app"
 	"twitocode/chronoflow/internal/config"
-	"twitocode/chronoflow/internal/logger"
+	"twitocode/chronoflow/internal/db"
 )
 
-func run(
-	ctx context.Context,
-	getenv func(string) string,
-) error {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Could not load .env")
-		return err
+func run(ctx context.Context, getenv func(string) string) error {
+	if err := godotenv.Load(); err != nil {
+		return fmt.Errorf("could not load .env: %w", err)
 	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	logger.Init()
-	log := logger.Sugar()
-	defer logger.Close()
+	cfg := config.New(getenv)
 
-	config := config.New(getenv)
-	ginEngine := app.NewServer(config)
+	conn, err := pgx.Connect(ctx, cfg.DatabaseURL)
+	cfg.Log.Info("connecting to database")
+	if err != nil {
+		return err
+	}
+	cfg.Log.Info("database connected")
+	defer conn.Close(ctx)
+
+	queries := db.New(conn)
+	services := app.NewServices(cfg, queries)
+	chiRouter := app.NewServer(cfg, services)
 
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort(config.Host, config.Port),
-		Handler: ginEngine,
+		Addr: ":" + cfg.Port,
+		// Addr:    net.JoinHostPort(cfg.Host, cfg.Port),
+		Handler: chiRouter,
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	errCh := make(chan error, 1)
 	go func() {
-		defer wg.Done()
-		<-ctx.Done()
-		shutdownCtx := context.Background()
-		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10*time.Second)
-		defer cancel()
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			log.Error("error shutting down http server", zap.Error(err))
-		}
-	}()
-
-	go func() {
-		log.Info("listening on", zap.String("addr", httpServer.Addr))
+		cfg.Log.Info("listening on", zap.String("addr", httpServer.Addr))
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("error listening and serving", zap.Error(err))
+			errCh <- err
 		}
 	}()
 
-	wg.Wait()
+	<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		cfg.Log.Error("error shutting down http server", zap.Error(err))
+	}
+
 	return nil
 }
 
 func main() {
-	godotenv.Load()
-
 	ctx := context.Background()
 	if err := run(ctx, os.Getenv); err != nil {
-		logger.Get().Error("fatal error", zap.Error(err))
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }

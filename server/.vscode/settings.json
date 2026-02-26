@@ -1,3 +1,15 @@
 {
-  "cSpell.words": ["resty"]
+  "cSpell.words": ["godotenv", "resty"],
+  "sqltools.connections": [
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "Chronoflow",
+      "database": "chronoflow",
+      "username": "postgres"
+    }
+  ]
 }

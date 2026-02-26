@@ -1,18 +1,24 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
+	"encoding/json"
+	"net/http"
 
-	"twitocode/chronoflow/internal/config"
-	"twitocode/chronoflow/internal/logger"
 	"twitocode/chronoflow/internal/service"
 )
 
-func HandleStockNews(config *config.Config, ns *service.NewsService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		logger.Get().Info("handling OAuth2 callback")
-		c.JSON(200, gin.H{
-			"output": ns.Get(),
-		})
+func HandleStockNews(ns *service.NewsService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := r.URL.Query().Get("symbol")
+		ns.Logger.Info("handling stock news request")
+		news, err := ns.Get(r.Context(), symbol)
+		if err != nil {
+			SendError(w, 500, "Failed to retrieve stock news")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(news)
 	}
 }

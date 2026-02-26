@@ -1,32 +1,28 @@
 package app
 
 import (
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 
 	"twitocode/chronoflow/internal/config"
-	"twitocode/chronoflow/internal/service"
+	mw "twitocode/chronoflow/internal/middleware"
 )
 
-func NewServer(config *config.Config) *gin.Engine {
-	config.Log.Info("initializing gin server")
+func NewServer(config *config.Config, services *Services) *chi.Mux {
+	config.Log.Info("initializing chi server")
 
-	router := gin.Default()
-	router.Use(LoggingMiddleware(config.Log))
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Use(mw.LoggingMiddleware(config.Log))
+  r.Use(middleware.CleanPath)
+  r.Use(middleware.RedirectSlashes)
+  r.Use(middleware.StripSlashes)
+  r.Use(httprate.LimitByIP(100, 1*time.Minute))
 
-	newsService := service.New(config.Log)
-	addRoutes(router, config, newsService)
+	addRoutes(r, services)
 
-	return router
-}
-
-func LoggingMiddleware(log *zap.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
-		log.Info("request",
-			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
-			zap.Int("status", c.Writer.Status()),
-		)
-	}
+	return r
 }
