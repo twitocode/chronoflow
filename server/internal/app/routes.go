@@ -9,6 +9,8 @@ import (
 func addRoutes(r *chi.Mux, services *Services) {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/news", handlers.HandleStockNews(services.News))
+		r.Get("/stocks/aggregate", handlers.HandleStockInfoAggregate(services.Stock))
+		r.Get("/analysis", handlers.HandleStockAnalysis(services.Analysis))
 		r.Get("/auth/{email}", handlers.HandleCheckEmail(services.Auth))
 		r.Post("/auth/signup", handlers.HandleSignup(services.Auth))
 	})

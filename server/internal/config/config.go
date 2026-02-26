@@ -11,8 +11,10 @@ type Config struct {
 	Host         string
 	Port         string
 	MarketAuxKey string
+	FinnhubKey   string
 	Log          *zap.Logger
 	DatabaseURL  string
+	GeminiApiKey string
 }
 
 func New(getenv func(string) string) *Config {
@@ -29,7 +31,9 @@ func New(getenv func(string) string) *Config {
 	}
 
 	marketAuxKey := getenv("MARKET_AUX_KEY")
+	finnhubKey := getenv("FINNHUB_KEY")
 	databaseUrl := getenv("DATABASE_URL")
+	geminiKey := getenv("GEMINI_API_KEY")
 	log.Info("config loaded", zap.String("host", host), zap.String("port", port))
 
 	return &Config{
@@ -38,6 +42,8 @@ func New(getenv func(string) string) *Config {
 		MarketAuxKey: marketAuxKey,
 		Log:          log,
 		DatabaseURL:  databaseUrl,
+		FinnhubKey:   finnhubKey,
+		GeminiApiKey: geminiKey,
 	}
 }
 
