@@ -65,7 +65,7 @@ func NewNewsService(logger *zap.Logger, apiKey string, queries *db.Queries) *New
 func (n *NewsService) Get(ctx context.Context, symbol string) (*NewsResponse, error) {
 	var newsData NewsResponse
 	fromCache, found := n.cache.Get(symbol)
-
+  
 	if found {
 		newsData = fromCache.(NewsResponse)
 	} else {

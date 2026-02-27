@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
+	"twitocode/chronoflow/internal/data"
 	"twitocode/chronoflow/internal/db"
 
 	"github.com/patrickmn/go-cache"
@@ -15,40 +17,6 @@ import (
 	"google.golang.org/genai"
 )
 
-// Gemini 3 Flash Preview Pricing per 1M tokens
-const (
-	Gemini3FlashInputPrice  = 0.50
-	Gemini3FlashOutputPrice = 3.00
-)
-
-var systemPrompt string = `
-  Act as a Senior Quantitative Financial Analyst and Data Scientist. Your goal is to perform cross-correlational
-  analysis between news sentiment and market price action.
-  CRITICAL CONSTRAINTS:
-    1. Provide data-driven reasoning based ONLY on the provided news and metrics.
-    2. If the data is contradictory, acknowledge the volatility.
-    3. ALWAYS return your response in the specified JSON format.
-    4. Do NOT include any conversational text (e.g., "Here is your analysis...") before or after the JSON.
-    5. This is for informational purposes; do not provide a "Financial Advice" disclaimer as it is already handled
-      by the UI.
-`
-
-var userPrompt string = `
-    ### YOUR TASK
-    Perform a deep analysis of how the news headlines correlate with the provided market metrics. 
-    Look for "catalysts" (earnings surprises, technical trends, sentiment shifts) and determine if the 
-    market has already "priced in" this news or if a further move is likely.
-
-    ### OUTPUT FORMAT (JSON ONLY)
-    {
-      "prediction": "BULLISH | BEARISH | NEUTRAL",
-      "confidence_score": 0.0, // 0.0 to 1.0
-      "short_term_outlook": "String describing the next 5-10 days",
-      "key_catalysts": ["Point 1", "Point 2"],
-      "sentiment_analysis": "Summary of news tone",
-      "risk_factors": ["Factor 1", "Factor 2"]
-    }
-`
 
 type AnalysisService struct {
 	ns      *NewsService
@@ -73,32 +41,36 @@ func NewAnalysisService(ns *NewsService, ss *StockService, logger *zap.Logger, a
 		ss:      ss,
 		Logger:  logger,
 		queries: queries,
-		cache:   cache.New(10*time.Minute, 15*time.Minute),
+		cache:   cache.New(24*time.Hour, 1 *time.Hour),
 		gemini:  gemini,
 	}
 }
 
 func (as *AnalysisService) Analyze(ctx context.Context, symbol string) (string, error) {
-	g, errctx := errgroup.WithContext(ctx)
+	g, err_ctx := errgroup.WithContext(ctx)
 
 	var stockInfo *StockInfoAggregate
 	var news *NewsResponse
 
-	g.Go(func() error {
-		data, err := as.ss.Get(errctx, symbol)
+	g.Go(func() error { 
+		start := time.Now()
+		data, err := as.ss.Get(err_ctx, symbol)
 		if err != nil {
 			return err
 		}
 		stockInfo = data
+		as.Logger.Info("retrieved stock info", zap.Duration("duration", time.Since(start)))
 		return nil
 	})
 
 	g.Go(func() error {
-		data, err := as.ns.Get(errctx, symbol)
+		start := time.Now()
+		data, err := as.ns.Get(err_ctx, symbol)
 		if err != nil {
 			return err
 		}
 		news = data
+		as.Logger.Info("retrieved news data", zap.Duration("duration", time.Since(start)))
 		return nil
 	})
 
@@ -157,48 +129,67 @@ func (as *AnalysisService) formatNewsForAI(news *[]NewsData) string {
 }
 
 func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo *StockInfoAggregate, news *[]NewsData) (string, error) {
-	if x, found := as.cache.Get(symbol); found {
+  as.Logger.Info("starting ai prediction")
+  promptData := as.BuildPrompt(stockInfo, news)
+  hash := sha256.Sum256([]byte(promptData))
+  cacheKey := fmt.Sprintf("%s:%x", symbol, hash)
+
+	if x, found := as.cache.Get(cacheKey); found {
 		return x.(string), nil
 	}
 
 	config := &genai.GenerateContentConfig{
-		SystemInstruction: genai.NewContentFromText(systemPrompt, genai.RoleUser),
-	}
+		SystemInstruction: genai.NewContentFromText(data.SystemPrompt, genai.RoleUser),
 
-	promptText := as.BuildPrompt(stockInfo, news)
-	fullPrompt := fmt.Sprintf("%s\n%s", userPrompt, promptText)
+	}
+	fullPrompt := fmt.Sprintf("%s\n%s", data.UserPrompt, promptData)
 
 	inputTokens, _ := as.EstimateTokens(fullPrompt)
-	inputCost := (float64(inputTokens) / 1_000_000.0) * Gemini3FlashInputPrice
+	inputCost := (float64(inputTokens) / 1_000_000.0) * data.Gemini3FlashInputPrice
 	as.Logger.Debug("Gemini Input Stats",
 		zap.Int("tokens", inputTokens),
 		zap.Float64("cost_usd", inputCost),
 	)
 
+	start := time.Now()
 	result, err := as.gemini.Models.GenerateContent(
 		ctx,
 		"gemini-3-flash-preview",
 		genai.Text(fullPrompt),
 		config,
 	)
+	duration := time.Since(start)
 
 	if err != nil {
 		as.Logger.Error("error with gemini response", zap.Error(err))
 		return "", err
 	}
 
-	prediction := result.Text()
-	as.cache.Set(symbol, prediction, cache.DefaultExpiration)
+	prediction := as.sanitizeJSON(result.Text())
+	as.cache.Set(cacheKey, prediction, cache.DefaultExpiration)
 
 	outputTokens, _ := as.EstimateTokens(prediction)
-	outputCost := (float64(outputTokens) / 1_000_000.0) * Gemini3FlashOutputPrice
+	outputCost := (float64(outputTokens) / 1_000_000.0) * data.Gemini3FlashOutputPrice
 	as.Logger.Debug("Gemini Output Stats",
 		zap.Int("tokens", outputTokens),
 		zap.Float64("cost_usd", outputCost),
 		zap.Float64("total_request_cost_usd", inputCost+outputCost),
+		zap.Duration("duration", duration),
 	)
 
 	return prediction, nil
+}
+
+func (as *AnalysisService) sanitizeJSON(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```json") {
+		s = strings.TrimPrefix(s, "```json")
+		s = strings.TrimSuffix(s, "```")
+	} else if strings.HasPrefix(s, "```") {
+		s = strings.TrimPrefix(s, "```")
+		s = strings.TrimSuffix(s, "```")
+	}
+	return strings.TrimSpace(s)
 }
 
 func (as *AnalysisService) EstimateTokens(text string) (int, error) {

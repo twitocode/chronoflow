@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"twitocode/chronoflow/internal/service"
@@ -20,6 +21,7 @@ func HandleStockAnalysis(as *service.AnalysisService) http.HandlerFunc {
 
 		var result map[string]interface{}
 		err = json.Unmarshal([]byte(res), &result)
+    fmt.Printf("%s", res)
 		if err != nil {
 			http.Error(w, "AI returned invalid JSON", 500)
 			return

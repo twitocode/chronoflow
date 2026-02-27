@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["Financials", "godotenv", "resty"],
+  "cSpell.words": ["Financials", "genai", "godotenv", "resty"],
   "sqltools.connections": [
     {
       "ssh": "Disabled",

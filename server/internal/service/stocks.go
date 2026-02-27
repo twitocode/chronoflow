@@ -47,7 +47,7 @@ func NewStockService(logger *zap.Logger, apiKey string, queries *db.Queries) *St
 		apiKey:        apiKey,
 		queries:       queries,
 		finnhubClient: finnhubClient,
-		cache:         cache.New(10*time.Minute, 15*time.Minute),
+		cache:         cache.New(10*time.Minute, 5*time.Minute),
 	}
 }
 
