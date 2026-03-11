@@ -19,7 +19,7 @@ import (
 type StockService struct {
 	client  *resty.Client
 	Logger  *zap.Logger
-	apiKey  string
+	ApiKey  string
 	queries *db.Queries
 	cache   *cache.Cache
 
@@ -44,7 +44,7 @@ func NewStockService(logger *zap.Logger, apiKey string, queries *db.Queries) *St
 	return &StockService{
 		client:        client,
 		Logger:        logger,
-		apiKey:        apiKey,
+		ApiKey:        apiKey,
 		queries:       queries,
 		finnhubClient: finnhubClient,
 		cache:         cache.New(10*time.Minute, 5*time.Minute),

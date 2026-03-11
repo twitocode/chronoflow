@@ -17,6 +17,7 @@ import (
 	"twitocode/chronoflow/internal/app"
 	"twitocode/chronoflow/internal/config"
 	"twitocode/chronoflow/internal/db"
+	"twitocode/chronoflow/internal/ws"
 )
 
 func run(ctx context.Context, getenv func(string) string) error {
@@ -40,8 +41,12 @@ func run(ctx context.Context, getenv func(string) string) error {
 	queries := db.New(conn)
 	services := app.NewServices(cfg, queries)
 	chiRouter := app.NewServer(cfg, services)
+	go services.Hub.Run()
+	streamer := ws.NewFinnhubStreamer(services.Hub, services.Stock)
+	go streamer.Connect()
 
 	httpServer := &http.Server{
+    //needed for tailscale -- something like that
 		Addr: ":" + cfg.Port,
 		// Addr:    net.JoinHostPort(cfg.Host, cfg.Port),
 		Handler: chiRouter,
