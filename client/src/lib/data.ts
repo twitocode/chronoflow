@@ -1,4 +1,7 @@
-// Top 60 companies by market cap
+// Top 60 companies by market cap with logo URLs
+// Logos fetched from Logo.dev API
+import { env } from '#/env'
+
 export const topCompanies = [
   { symbol: 'NVDA', name: 'NVIDIA' },
   { symbol: 'AAPL', name: 'Apple' },
@@ -61,3 +64,11 @@ export const topCompanies = [
   { symbol: 'GILD', name: 'Gilead Sciences' },
   { symbol: 'DIS', name: 'Walt Disney' },
 ]
+
+export function getLogoUrl(symbol: string, size = 64) {
+  const apiKey = env.VITE_LOGO_DEV_KEY
+  if (!apiKey) {
+    return `https://ui-avatars.com/api/?name=${symbol}&background=random&size=${size}`
+  }
+  return `https://img.logo.dev/ticker/${symbol}?token=${apiKey}&size=${size}`
+}
