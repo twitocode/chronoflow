@@ -8,6 +8,8 @@ var PopularStocks  = []string{
 const (
 	Gemini3FlashInputPrice  = 0.50
 	Gemini3FlashOutputPrice = 3.00
+	Gemini3_1FlashInputPrice  = 0.25
+	Gemini3_1FlashOutputPrice = 1.50
 )
 
 var SystemPrompt string = `

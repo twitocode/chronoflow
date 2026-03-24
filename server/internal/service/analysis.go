@@ -145,7 +145,7 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 	fullPrompt := fmt.Sprintf("%s\n%s", data.UserPrompt, promptData)
 
 	inputTokens, _ := as.EstimateTokens(fullPrompt)
-	inputCost := (float64(inputTokens) / 1_000_000.0) * data.Gemini3FlashInputPrice
+	inputCost := (float64(inputTokens) / 1_000_000.0) * data.Gemini3_1FlashInputPrice
 	as.Logger.Debug("Gemini Input Stats",
 		zap.Int("tokens", inputTokens),
 		zap.Float64("cost_usd", inputCost),
@@ -154,7 +154,7 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 	start := time.Now()
 	result, err := as.gemini.Models.GenerateContent(
 		ctx,
-		"gemini-3-flash-preview",
+		"gemini-3.1-flash-lite-preview",
 		genai.Text(fullPrompt),
 		config,
 	)
@@ -169,7 +169,7 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 	as.cache.Set(cacheKey, prediction, cache.DefaultExpiration)
 
 	outputTokens, _ := as.EstimateTokens(prediction)
-	outputCost := (float64(outputTokens) / 1_000_000.0) * data.Gemini3FlashOutputPrice
+	outputCost := (float64(outputTokens) / 1_000_000.0) * data.Gemini3_1FlashOutputPrice
 	as.Logger.Debug("Gemini Output Stats",
 		zap.Int("tokens", outputTokens),
 		zap.Float64("cost_usd", outputCost),
