@@ -15,6 +15,7 @@ type Config struct {
 	Log          *zap.Logger
 	DatabaseURL  string
 	GeminiApiKey string
+	JWTSecret    string
 }
 
 func New(getenv func(string) string) *Config {
@@ -27,13 +28,17 @@ func New(getenv func(string) string) *Config {
 
 	port := getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8000"
 	}
 
 	marketAuxKey := getenv("MARKET_AUX_KEY")
 	finnhubKey := getenv("FINNHUB_KEY")
 	databaseUrl := getenv("DATABASE_URL")
 	geminiKey := getenv("GEMINI_API_KEY")
+	jwtSecret := getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "secret-key-for-dev"
+	}
 	log.Info("config loaded", zap.String("host", host), zap.String("port", port))
 
 	return &Config{
@@ -44,6 +49,7 @@ func New(getenv func(string) string) *Config {
 		DatabaseURL:  databaseUrl,
 		FinnhubKey:   finnhubKey,
 		GeminiApiKey: geminiKey,
+		JWTSecret:    jwtSecret,
 	}
 }
 

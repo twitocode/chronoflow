@@ -45,6 +45,63 @@ type SignupDTO struct {
 	Password string `json:"password"`
 }
 
+func setTokenCookie(w http.ResponseWriter, token string) {
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		MaxAge:   86400,
+	}
+	w.Header().Add("Set-Cookie", cookie.String())
+}
+
+func HandleLogin(as *service.AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		as.Logger.Info("handling login")
+
+		var dto SignupDTO
+		if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+			SendError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		user, err := as.GetUserByEmail(r.Context(), dto.Email)
+		if err != nil {
+			as.Logger.Error("failed to find user", zap.String("email", dto.Email), zap.Error(err))
+			SendError(w, http.StatusUnauthorized, "Invalid credentials")
+			return
+		}
+
+		if !as.CheckPasswordHash(dto.Password, user.PasswordHash) {
+			SendError(w, http.StatusUnauthorized, "Invalid credentials")
+			return
+		}
+
+		token, err := as.GenerateToken(user.ID, user.Email)
+		if err != nil {
+			as.Logger.Error("failed to generate token", zap.Error(err))
+			SendError(w, http.StatusInternalServerError, "Failed to generate token")
+			return
+		}
+
+		setTokenCookie(w, token)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Debug-Set", "true")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{
+			"message": "Login successful",
+			"data": map[string]any{
+				"id":    user.ID,
+				"email": user.Email,
+			},
+		})
+	}
+}
+
 func HandleSignup(as *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		as.Logger.Info("handling signup")
@@ -73,7 +130,7 @@ func HandleSignup(as *service.AuthService) http.HandlerFunc {
 			return
 		}
 
-		err = as.CreateUser(r.Context(), dto.Email, hashedPass)
+		user, err := as.CreateUser(r.Context(), dto.Email, hashedPass)
 		if err != nil {
 			if errors.Is(err, service.ErrUserExists) {
 				SendError(w, http.StatusConflict, "User already exists")
@@ -84,10 +141,23 @@ func HandleSignup(as *service.AuthService) http.HandlerFunc {
 			return
 		}
 
+		token, err := as.GenerateToken(user.ID, user.Email)
+		if err != nil {
+			as.Logger.Error("failed to generate token", zap.Error(err))
+			SendError(w, http.StatusInternalServerError, "Failed to generate token")
+			return
+		}
+
+		setTokenCookie(w, token)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]any{
 			"message": "User created successfully",
+			"data": map[string]any{
+				"id":    user.ID,
+				"email": user.Email,
+			},
 		})
 	}
 }

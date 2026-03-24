@@ -22,7 +22,7 @@ func NewServices(cfg *config.Config, queries *db.Queries) *Services {
 
 	return &Services{
 		News:     newsService,
-		Auth:     service.NewAuthService(queries, cfg.Log),
+		Auth:     service.NewAuthService(queries, cfg.Log, cfg.JWTSecret),
 		Stock:    stockService,
 		Analysis: service.NewAnalysisService(newsService, stockService, cfg.Log, cfg.GeminiApiKey, queries),
 		Hub:      hub,

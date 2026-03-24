@@ -16,6 +16,8 @@ require (
 	github.com/Finnhub-Stock-API/finnhub-go/v2 v2.0.22 // indirect
 	github.com/antihax/optional v1.0.0 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
+	github.com/go-chi/cors v1.2.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
