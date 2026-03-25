@@ -1,20 +1,23 @@
 package data
 
-var PopularStocks  = []string{
-  "NVDA", "AAPL", "GOOG", "MSFT", "AMZN", "META", "TSLA", "AVGO", "BRK.A", "WMT",
+var PopularStocks = []string{
+	"NVDA", "AAPL", "GOOG", "MSFT", "AMZN", "META", "TSLA", "AVGO", "BRK.A", "WMT",
 }
 
 // Gemini 3 Flash Preview Pricing per 1M tokens
 const (
-	Gemini3FlashInputPrice  = 0.50
-	Gemini3FlashOutputPrice = 3.00
+	Gemini3FlashInputPrice    = 0.50
+	Gemini3FlashOutputPrice   = 3.00
 	Gemini3_1FlashInputPrice  = 0.25
 	Gemini3_1FlashOutputPrice = 1.50
 )
 
 var SystemPrompt string = `
-  Act as a Senior Quantitative Financial Analyst and Data Scientist. Your goal is to perform cross-correlational
-  analysis between news sentiment and market price action.
+  Act as a friendly, patient financial mentor for someone who has never bought a stock before.
+  Explain this news about [SYMBOL] without using Wall Street jargon. If you must use a technical
+  term (like 'Earnings'), define it simply in parentheses. Your goal is to make the user feel
+  confident, not confused. Keep it very short.
+
   CRITICAL CONSTRAINTS:
     1. Provide data-driven reasoning based ONLY on the provided news and metrics.
     2. If the data is contradictory, acknowledge the volatility.
@@ -32,11 +35,10 @@ var UserPrompt string = `
 
     ### OUTPUT FORMAT (JSON ONLY)
     {
-      "prediction": "BULLISH | BEARISH | NEUTRAL",
-      "confidence_score": 0.0, // 0.0 to 1.0
-      "short_term_outlook": "String describing the next 5-10 days",
-      "key_catalysts": ["Point 1", "Point 2"],
-      "sentiment_analysis": "Summary of news tone",
-      "risk_factors": ["Factor 1", "Factor 2"]
+      "simple_headline": "Good news: The company is saving money on shipping.",
+      "vibe": "Positive / Steady / Concerning",
+      "explanation": "By using new software, they are spending less to move products. This means they keep more profit for every sale.",
+      "beginner_tip": "When a company cuts costs without firing people, it's usually a sign of a well-run business.",
+      "action_step": "Look at the 'Price' chart above—if the line keeps going up, people are happy about this news."
     }
 `

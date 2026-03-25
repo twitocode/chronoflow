@@ -48,7 +48,7 @@ export function StockDashboard() {
   const [companyName, setCompanyName] = useState(() => {
     if (typeof window !== 'undefined') {
       const symbol = localStorage.getItem('lastViewedSymbol') || 'AAPL'
-      return companyFromSymbol(symbol)
+      return companyFromSymbol(symbol) || "Apple"
     }
     return 'Apple'
   })
@@ -83,7 +83,7 @@ export function StockDashboard() {
     data: analysisData,
     isLoading: analysisLoading,
     error: analysisError,
-  } = useQuery<AnalysisResponse>({
+  } = useQuery<any>({
     queryKey: ['analysis', symbol],
     queryFn: () => apiGet(`/api/v1/analysis?symbol=${symbol}`),
     staleTime: 60 * 60 * 1000,
@@ -93,11 +93,6 @@ export function StockDashboard() {
       return failureCount < 3
     },
   })
-
-  const prediction =
-    analysisData?.summary ||
-    analysisData?.prediction ||
-    (typeof analysisData === 'string' ? analysisData : undefined)
 
   return (
     <div className="min-h-screen bg-background overflow-y-auto">
@@ -111,7 +106,7 @@ export function StockDashboard() {
         <StockChart />
 
         <AIPrediction
-          prediction={prediction}
+          prediction={analysisData}
           isLoading={analysisLoading}
           isError={!!analysisError}
         />
