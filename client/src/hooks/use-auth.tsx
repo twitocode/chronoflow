@@ -1,14 +1,15 @@
 import { useState, useEffect, createContext, useContext } from 'react'
+import { apiGet, apiPost } from '#/lib/api'
 
 interface User {
-  id: number
+  id?: string
   email: string
 }
 
 interface AuthContextType {
   user: User | null
   login: (user: User) => void
-  logout: () => void
+  logout: () => Promise<void>
   isLoading: boolean
 }
 
@@ -19,22 +20,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
+    let isMounted = true
 
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    const bootstrapAuth = async () => {
+      try {
+        const response = await apiGet<{ data: User }>('/api/v1/auth/me')
+        if (isMounted) {
+          setUser(response.data)
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null)
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
     }
-    setIsLoading(false)
+
+    bootstrapAuth()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const login = (newUser: User) => {
     setUser(newUser)
-    localStorage.setItem('user', JSON.stringify(newUser))
+    setIsLoading(false)
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
+  const logout = async () => {
+    try {
+      await apiPost('/api/v1/auth/logout')
+    } finally {
+      setUser(null)
+      setIsLoading(false)
+    }
   }
 
   return (

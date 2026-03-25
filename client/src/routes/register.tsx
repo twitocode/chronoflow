@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { zodValidator } from '@tanstack/zod-form-adapter'
 import { z } from 'zod'
@@ -16,7 +17,13 @@ import { useAuth } from '../hooks/use-auth.tsx'
 
 function RegisterComponent() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, user, isLoading } = useAuth()
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      navigate({ to: '/', replace: true })
+    }
+  }, [isLoading, navigate, user])
 
   const registerMutation = useMutation({
     mutationFn: async (values: z.infer<typeof registerSchema>) => {
@@ -54,6 +61,14 @@ function RegisterComponent() {
       await registerMutation.mutateAsync(value)
     },
   })
+
+  if (isLoading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[80vh]">

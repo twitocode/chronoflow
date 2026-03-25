@@ -25,9 +25,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 import { useAuth, AuthProvider } from '../hooks/use-auth.tsx'
+import { Github } from "lucide-react";
 
 function AppHeader() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading } = useAuth()
   const location = useLocation()
   
   // Hide header on landing page
@@ -41,10 +42,10 @@ function AppHeader() {
         <div className="flex items-center justify-between">
           <Link to="/" className="text-xl font-bold">ChronoFlow</Link>
           <nav className="flex gap-4 items-center">
-            {user ? (
+            {isLoading ? null : user ? (
               <>
                 <span className="text-sm text-muted-foreground">{user.email}</span>
-                <button onClick={logout} className="hover:underline cursor-pointer">Logout</button>
+                <button onClick={() => void logout()} className="hover:underline cursor-pointer">Logout</button>
               </>
             ) : (
               <>
@@ -56,6 +57,16 @@ function AppHeader() {
         </div>
       </div>
     </header>
+  )
+}
+
+ function AppFooter() {
+  return (
+    <footer className="mx-auto w-full flex justify-center pt-3 pb-10">
+      <a href="https://github.com/twitocode" className="flex space-x-4" >
+        <Github /> <span>@twitocode</span>
+      </a>
+    </footer>
   )
 }
 
@@ -86,6 +97,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <AuthProvider>
             <AppHeader />
             <AuthAwareOutlet />
+            <AppFooter />
             <TanStackDevtools
               config={{ position: 'bottom-right' }}
               plugins={[

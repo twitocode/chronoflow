@@ -1,259 +1,201 @@
+import { Button } from '#/components/ui/button'
+import { useAuth } from '#/hooks/use-auth'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { TrendingUp, Sparkles, Bell, Shield, Zap, Users, ArrowRight, Star } from 'lucide-react'
+import { Bell, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
+import AppScreenshotImage from '../assets/app-screenshot.png'
 
-export const Route = createFileRoute('/landing')({ component: LandingPage })
-
-const features = [
-  {
-    icon: Sparkles,
-    title: "AI-Powered Insights",
-    description: "Get intelligent stock predictions powered by advanced AI analysis of market trends and news sentiment."
-  },
-  {
-    icon: Bell,
-    title: "Real-Time News",
-    description: "Stay ahead with live stock news aggregation from trusted sources, analyzed for market impact."
-  },
-  {
-    icon: TrendingUp,
-    title: "Smart Tracking",
-    description: "Monitor your favorite stocks with beautiful charts and real-time price updates."
-  },
-  {
-    icon: Shield,
-    title: "Secure & Private",
-    description: "Your data is protected with enterprise-grade security and encryption."
-  },
-  {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "Experience blazing-fast performance with optimized data fetching and caching."
-  },
-  {
-    icon: Users,
-    title: "Community Driven",
-    description: "Join thousands of investors making smarter decisions with ChronoFlow."
-  }
-]
-
-const testimonials = [
-  {
-    name: "Sarah Chen",
-    role: "Day Trader",
-    content: "ChronoFlow's AI predictions have been incredibly accurate. It's like having a personal analyst.",
-    avatar: "SC"
-  },
-  {
-    name: "Michael Rodriguez",
-    role: "Portfolio Manager",
-    content: "The real-time news aggregation saves me hours every day. Essential tool for serious investors.",
-    avatar: "MR"
-  },
-  {
-    name: "Emily Watson",
-    role: "Retail Investor",
-    content: "Finally, a platform that makes stock analysis accessible without overwhelming complexity.",
-    avatar: "EW"
-  }
-]
-
-const stats = [
-  { value: "10K+", label: "Active Users" },
-  { value: "500K+", label: "Predictions Made" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "50M+", label: "Data Points Analyzed" }
-]
+export const Route = createFileRoute('/landing')({
+  component: LandingPage,
+})
 
 function LandingPage() {
+  const { user } = useAuth()
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="size-6 text-primary" />
-              <span className="text-xl font-bold text-foreground">ChronoFlow</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link 
-                to="/login" 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground flex flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <span className="text-xl font-bold text-foreground">ChronoFlow</span>
+
+        <div className="flex items-center gap-3">
+          {user ? (
+            <Link to="/">
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Sign In
+                Go to App
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Log in
+                </Button>
               </Link>
-              <Link 
-                to="/register"
-                className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg"
-              >
-                Get Started
+              <Link to="/register">
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Get Started
+                </Button>
               </Link>
-            </div>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Left Section - Hero */}
+        <div className="flex-1 flex flex-col justify-center px-6 lg:px-16 py-8 lg:py-0">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium w-fit mb-6">
+            <Sparkles className="w-3.5 h-3.5" />
+            Powered by AI
+          </div>
+
+          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight text-balance mb-4">
+            Smarter stock trading starts here
+          </h1>
+
+          <p className="text-muted-foreground text-lg max-w-md mb-8 text-pretty">
+            Real-time market data, AI-powered insights, and intelligent alerts
+            to help you make better investment decisions.
+          </p>
+
+          <div className="flex items-center gap-4">
+            {user ? (
+              <Link to="/">
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Go to App
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Find Insights
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-        <div className="mx-auto max-w-7xl px-6 py-24 relative">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-secondary/50 border border-border rounded-full px-4 py-1.5 mb-8">
-              <Star className="size-4 text-accent fill-accent" />
-              <span className="text-sm font-medium text-foreground">AI-Powered Stock Analysis Platform</span>
-            </div>
-            
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground tracking-tight mb-6">
-              Make Smarter
-              <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Investment Decisions
-              </span>
-            </h1>
-            
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Harness the power of AI to analyze market trends, news sentiment, and stock patterns. 
-              Get actionable insights in seconds.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                to="/register"
-                className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-full text-lg font-semibold hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
-              >
-                Start Trading Free
-                <ArrowRight className="size-5" />
-              </Link>
-              <Link 
-                to="/login"
-                className="inline-flex items-center justify-center px-8 py-4 rounded-full text-lg font-semibold border-2 border-border hover:border-primary/50 hover:bg-secondary/50 transition-all"
-              >
-                Sign In
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 pt-10 border-t border-border/50">
-              {stats.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-3xl md:text-4xl font-bold text-foreground mb-1">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-secondary/30">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
-              Everything You Need to Succeed
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Powerful features designed for both beginner and experienced investors
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <div 
-                key={feature.title}
-                className="bg-card rounded-3xl p-8 border border-border hover:border-primary/30 transition-all hover:shadow-lg group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="size-7 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+        {/* Right Section - Feature Cards */}
+        <div className="flex-1 flex items-center justify-center p-6 lg:p-12 min-h-0">
+          <div className="grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-[minmax(0,220px)_minmax(0,320px)_minmax(0,220px)] lg:grid-rows-2">
+            {/* Live Prices Card */}
+            <div className="order-2 bg-card border border-border rounded-xl p-5 flex h-full sm:min-h-30 flex-col gap-3 lg:order-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-primary" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
-              Trusted by Investors
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              See what our community has to say about ChronoFlow
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial) => (
-              <div 
-                key={testimonial.name}
-                className="bg-card rounded-3xl p-8 border border-border hover:shadow-xl transition-all"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="size-4 text-accent fill-accent" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-6 leading-relaxed">"{testimonial.content}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">{testimonial.name}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                  </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  Live Prices
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Real-time market data with millisecond updates
+                </p>
+              </div>
+              <div className="sm:mt-auto pt-3 border-t border-border">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">MSFT</span>
+                  <span className="text-emerald-400">+2.34%</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* CTA Section */}
-      <section className="py-24">
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="bg-gradient-to-br from-primary to-accent rounded-3xl p-12 text-center text-primary-foreground shadow-2xl">
-            <h2 className="text-4xl font-bold mb-4">
-              Ready to Get Started?
-            </h2>
-            <p className="text-lg mb-8 opacity-90 max-w-xl mx-auto">
-              Join thousands of investors using ChronoFlow to make smarter trading decisions.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                to="/register"
-                className="inline-flex items-center justify-center gap-2 bg-white text-primary px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/90 transition-all shadow-lg"
-              >
-                Create Free Account
-                <ArrowRight className="size-5" />
-              </Link>
+            {/* App Preview */}
+            <div className="order-1 mx-auto w-full max-w-sm overflow-hidden rounded-[28px] bg-linear-to-b from-card to-card/80 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:col-span-2 lg:order-0 lg:col-span-1 lg:row-span-2 lg:max-w-none">
+              <div className="flex h-full min-h-105 items-center justify-center rounded-[22px] border border-border/60 bg-black/30 p-2 lg:min-h-0">
+                <img
+                  src={AppScreenshotImage}
+                  alt="ChronoFlow application preview"
+                  className="h-full max-h-160 w-full rounded-[18px] object-contain"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-12 bg-secondary/30">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="size-5 text-primary" />
-              <span className="font-semibold text-foreground">ChronoFlow</span>
+            {/* AI Mentor Card */}
+            <div className="order-2 bg-card border border-border rounded-xl p-5 flex h-full sm:min-h-30 flex-col gap-3 lg:order-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  Stock Mentor
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  AI-powered analysis and recommendations
+                </p>
+              </div>
+              <div className="sm:mt-auto pt-3 border-t border-border">
+                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full w-3/4 bg-primary rounded-full animate-pulse" />
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground">
-              © 2026 ChronoFlow. All rights reserved.
+
+            {/* Smart Alerts Card */}
+            <div className="order-2 bg-card border border-border rounded-xl p-5 flex h-full sm:min-h-30 flex-col gap-3 lg:order-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  Smart Alerts
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Custom notifications for price movements
+                </p>
+              </div>
+              <div className="sm:mt-auto pt-3 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs text-muted-foreground">
+                    3 alerts active
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+
+            {/* News Topics Card */}
+            <div className="order-2 bg-card border border-border rounded-xl p-5 flex h-full sm:min-h-30 flex-col gap-3 lg:order-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Newspaper className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  News Topics
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  View recent news related to a stock symbol
+                </p>
+              </div>
+              <div className="sm:mt-auto pt-3 border-t border-border">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">
+                    Yahoo, TheGuardian, ...
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </footer>
+      </main>
     </div>
   )
 }

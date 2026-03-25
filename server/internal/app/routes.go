@@ -16,10 +16,12 @@ func addRoutes(r *chi.Mux, services *Services) {
 		r.Group(func(r chi.Router) {
 			r.Use(mw.RequireAuth)
 			r.Get("/analysis", handlers.HandleStockAnalysis(services.Analysis))
+			r.Get("/auth/me", handlers.HandleCurrentUser())
 		})
 
 		r.Get("/auth/{email}", handlers.HandleCheckEmail(services.Auth))
 		r.Post("/auth/signup", handlers.HandleSignup(services.Auth))
 		r.Post("/auth/login", handlers.HandleLogin(services.Auth))
+		r.Post("/auth/logout", handlers.HandleLogout())
 	})
 }

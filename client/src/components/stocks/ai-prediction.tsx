@@ -27,7 +27,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
         bg: "bg-green-500/10", 
         border: "border-green-500/20",
         icon: CheckCircle2,
-        label: "Positive Sign" 
+        label: "Looking Good" 
       }
     }
     if (v.includes('concerning') || v.includes('negative') || v.includes('bearish') || v.includes('bad')) {
@@ -36,7 +36,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
         bg: "bg-red-500/10", 
         border: "border-red-500/20",
         icon: AlertCircle,
-        label: "Concerning" 
+        label: "Risky" 
       }
     }
     return { 
@@ -44,7 +44,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
       bg: "bg-yellow-500/10", 
       border: "border-yellow-500/20",
       icon: HelpCircle,
-      label: "Steady / Waiting" 
+      label: "Mixed Signals" 
     }
   }
 
@@ -68,12 +68,17 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
         </div>
         
         {!isLoading && !isError && prediction && (
-          <div className={cn(
-            "flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider shadow-sm",
-            vibeConfig.bg, vibeConfig.color, vibeConfig.border
-          )}>
-            <VibeIcon className="size-3" />
-            {vibeConfig.label}
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+              Stock Sentiment
+            </span>
+            <div className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider shadow-sm",
+              vibeConfig.bg, vibeConfig.color, vibeConfig.border
+            )}>
+              <VibeIcon className="size-3" />
+              {vibeConfig.label}
+            </div>
           </div>
         )}
       </div>

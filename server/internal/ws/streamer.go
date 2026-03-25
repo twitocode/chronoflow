@@ -30,8 +30,13 @@ func (fs *FinnhubStreamer) Connect() {
 			continue
 		}
 
-		// Subscribe to top 10 symbols by default
-		symbols := []string{"AAPL", "NVDA", "TSLA", "MSFT", "AMZN", "GOOGL", "META", "NFLX", "BINANCE:BTCUSDT", "BINANCE:ETHUSDT"}
+		symbols := []string{
+			"NVDA", "AAPL", "GOOG", "MSFT", "AMZN", "AVGO", "META", "TSLA", "BRK-B", "WMT",
+			"LLY", "JPM", "XOM", "V", "JNJ", "MU", "MA", "COST", "ORCL", "CVX",
+			"NFLX", "PLTR", "ABBV", "BAC", "CAT", "AMD", "PG", "HD", "KO", "CSCO",
+			"GE", "AMAT", "MRK", "MS", "RTX", "GS", "UNH", "GEV", "WFC", "TMUS",
+			"IBM", "INTC", "MCD", "VZ", "AXP", "PEP", "T", "TXN", "CRM", "DIS",
+		}
 		for _, sym := range symbols {
 			msg := map[string]string{
 				"type":   "subscribe",

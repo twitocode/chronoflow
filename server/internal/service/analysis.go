@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"twitocode/chronoflow/internal/data"
 	"twitocode/chronoflow/internal/db"
@@ -25,6 +26,10 @@ type AnalysisService struct {
 	queries *db.Queries
 	cache   *cache.Cache
 	gemini  *genai.Client
+
+	tikOnce   sync.Once
+	tikEnc    *tiktoken.Tiktoken
+	tikEncErr error
 }
 
 func NewAnalysisService(ns *NewsService, ss *StockService, logger *zap.Logger, apiKey string, queries *db.Queries) *AnalysisService {
@@ -138,13 +143,18 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 		return x.(string), nil
 	}
 
+	geminiCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(data.SystemPrompt, genai.RoleUser),
-
 	}
 	fullPrompt := fmt.Sprintf("%s\n%s", data.UserPrompt, promptData)
 
-	inputTokens, _ := as.EstimateTokens(fullPrompt)
+	inputTokens, err := as.EstimateTokens(fullPrompt)
+	if err != nil {
+		return "", err
+	}
 	inputCost := (float64(inputTokens) / 1_000_000.0) * data.Gemini3_1FlashInputPrice
 	as.Logger.Debug("Gemini Input Stats",
 		zap.Int("tokens", inputTokens),
@@ -153,7 +163,7 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 
 	start := time.Now()
 	result, err := as.gemini.Models.GenerateContent(
-		ctx,
+		geminiCtx,
 		"gemini-3.1-flash-lite-preview",
 		genai.Text(fullPrompt),
 		config,
@@ -166,9 +176,17 @@ func (as *AnalysisService) Predict(ctx context.Context, symbol string, stockInfo
 	}
 
 	prediction := as.sanitizeJSON(result.Text())
+
+	// Another request may have populated the cache while we were calling Gemini.
+	if x, found := as.cache.Get(cacheKey); found {
+		return x.(string), nil
+	}
 	as.cache.Set(cacheKey, prediction, cache.DefaultExpiration)
 
-	outputTokens, _ := as.EstimateTokens(prediction)
+	outputTokens, err := as.EstimateTokens(prediction)
+	if err != nil {
+		return prediction, nil
+	}
 	outputCost := (float64(outputTokens) / 1_000_000.0) * data.Gemini3_1FlashOutputPrice
 	as.Logger.Debug("Gemini Output Stats",
 		zap.Int("tokens", outputTokens),
@@ -192,12 +210,21 @@ func (as *AnalysisService) sanitizeJSON(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func (as *AnalysisService) EstimateTokens(text string) (int, error) {
-	tkm, err := tiktoken.GetEncoding("cl100k_base")
-	if err != nil {
-		return 0, fmt.Errorf("getEncoding: %v", err)
+func (as *AnalysisService) tokenEncoder() (*tiktoken.Tiktoken, error) {
+	as.tikOnce.Do(func() {
+		as.tikEnc, as.tikEncErr = tiktoken.GetEncoding("cl100k_base")
+	})
+	if as.tikEncErr != nil {
+		return nil, fmt.Errorf("getEncoding: %w", as.tikEncErr)
 	}
+	return as.tikEnc, nil
+}
 
+func (as *AnalysisService) EstimateTokens(text string) (int, error) {
+	tkm, err := as.tokenEncoder()
+	if err != nil {
+		return 0, err
+	}
 	tokenIds := tkm.Encode(text, nil, nil)
 	return len(tokenIds), nil
 }

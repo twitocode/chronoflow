@@ -12,7 +12,7 @@ type contextKey string
 const UserContextKey contextKey = "user"
 
 type UserClaims struct {
-	ID    int32  `json:"id"`
+	ID    string `json:"id"`
 	Email string `json:"email"`
 }
 
@@ -37,7 +37,7 @@ func JWTMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			// Get user ID from token (stored as string UUID)
-			_, ok := claims["sub"].(string)
+			userID, ok := claims["sub"].(string)
 			if !ok {
 				next.ServeHTTP(w, r)
 				return
@@ -49,7 +49,7 @@ func JWTMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			userClaims := &UserClaims{
-				ID:    0, // UUID-based auth, ID not used as int32
+				ID:    userID,
 				Email: email,
 			}
 

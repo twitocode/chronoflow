@@ -103,7 +103,7 @@ export function StockDashboard() {
           onSymbolChange={handleSymbolChange}
         />
 
-        <StockChart />
+        <StockChart symbol={symbol}/>
 
         <AIPrediction
           prediction={analysisData}

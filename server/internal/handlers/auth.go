@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
+	mw "twitocode/chronoflow/internal/middleware"
 	"twitocode/chronoflow/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -58,6 +60,47 @@ func setTokenCookie(w http.ResponseWriter, token string) {
 	w.Header().Add("Set-Cookie", cookie.String())
 }
 
+func clearTokenCookie(w http.ResponseWriter) {
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+	}
+	w.Header().Add("Set-Cookie", cookie.String())
+}
+
+func HandleCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userClaims, ok := r.Context().Value(mw.UserContextKey).(*mw.UserClaims)
+		if !ok || userClaims == nil {
+			SendError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"data": userClaims,
+		})
+	}
+}
+
+func HandleLogout() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clearTokenCookie(w)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"message": "Logout successful",
+		})
+	}
+}
+
 func HandleLogin(as *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		as.Logger.Info("handling login")
@@ -90,7 +133,6 @@ func HandleLogin(as *service.AuthService) http.HandlerFunc {
 		setTokenCookie(w, token)
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Debug-Set", "true")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]any{
 			"message": "Login successful",
