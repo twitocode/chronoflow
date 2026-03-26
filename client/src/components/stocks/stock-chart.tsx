@@ -1,9 +1,10 @@
 'use client'
 
 import { ChartComponent } from '#/components/charts/ChartComponent'
+import { apiGet, apiWebSocketUrl } from '#/lib/api'
 import { cn } from '#/lib/utils'
 import { Clock, Info, TrendingDown, TrendingUp } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 interface ChartDataPoint {
   time: number
@@ -27,14 +28,22 @@ const getIsMarketOpen = () => {
   return !isWeekend && isOpenTime
 }
 
-interface Props {
-  symbol: string;
+export type StockChartAlertLevel = {
+  id: number
+  targetPrice: number
+  condition: string
 }
+
+interface Props {
+  symbol: string
+  /** Alert thresholds for this symbol (dashed lines on the chart). */
+  alerts?: StockChartAlertLevel[]
+}
+
 export function StockChart(props: Props) {
   const [data, setData] = useState<ChartDataPoint[]>([])
   const [isMarketOpen, setIsMarketOpen] = useState(getIsMarketOpen())
 
-  // Check market status every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setIsMarketOpen(getIsMarketOpen())
@@ -42,30 +51,66 @@ export function StockChart(props: Props) {
     return () => clearInterval(interval)
   }, [])
 
+  const socketRef = useRef<WebSocket | null>(null)
+
   useEffect(() => {
+    let cancelled = false
     setData([])
 
-    const socket = new WebSocket(
-      `ws://localhost:8000/api/v1/stocks/ws?symbol=${props.symbol}`,
-    )
-
-    socket.addEventListener('message', (event) => {
-      const trade = JSON.parse(event.data)
-      setData((old) => {
-        // lightweight-charts requires strictly ascending UTCTimestamp (seconds).
-        const t = Math.floor(trade.time / 1000)
-        const value = trade.price as number
-        if (old.length === 0) return [{ time: t, value }]
-        const last = old[old.length - 1]
-        if (t === last.time) {
-          return [...old.slice(0, -1), { time: t, value }]
+    async function init() {
+      try {
+        const res = await apiGet<{ data: { symbol: string; price: number; time: number }[] }>(
+          `/api/v1/stocks/history?symbol=${encodeURIComponent(props.symbol)}`,
+        )
+        if (cancelled) return
+        if (res.data?.length) {
+          const initial: ChartDataPoint[] = []
+          for (const t of res.data) {
+            const sec = Math.floor(t.time / 1000)
+            const value = t.price
+            const last = initial[initial.length - 1]
+            if (!last || sec > last.time) {
+              initial.push({ time: sec, value })
+            } else if (sec === last.time) {
+              initial[initial.length - 1] = { time: sec, value }
+            }
+          }
+          setData(initial)
         }
-        if (t < last.time) return old
-        return [...old, { time: t, value }]
-      })
-    })
+      } catch {
+        // history unavailable, chart starts empty, live ticks will fill it
+      }
 
-    return () => socket.close()
+      if (cancelled) return
+
+      const socket = new WebSocket(
+        apiWebSocketUrl(`/api/v1/stocks/ws?symbol=${encodeURIComponent(props.symbol)}`),
+      )
+      socketRef.current = socket
+
+      socket.addEventListener('message', (event) => {
+        const trade = JSON.parse(event.data)
+        setData((old) => {
+          const t = Math.floor(trade.time / 1000)
+          const value = trade.price as number
+          if (old.length === 0) return [{ time: t, value }]
+          const last = old[old.length - 1]
+          if (t === last.time) {
+            return [...old.slice(0, -1), { time: t, value }]
+          }
+          if (t < last.time) return old
+          return [...old, { time: t, value }]
+        })
+      })
+    }
+
+    init()
+
+    return () => {
+      cancelled = true
+      socketRef.current?.close()
+      socketRef.current = null
+    }
   }, [props.symbol])
 
   const { lastPrice, priceChange, percentChange, isPositive } = useMemo(() => {
@@ -90,11 +135,11 @@ export function StockChart(props: Props) {
   }, [data])
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm mb-6 relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+    <div className="relative mb-6 overflow-hidden rounded-2xl border border-border/80 bg-card/80 p-4 shadow-md backdrop-blur-sm sm:p-6">
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-col">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          <div className="mb-1 flex items-baseline gap-2">
+            <span className="font-mono-nums text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               ${lastPrice.toFixed(2)}
             </span>
             <span
@@ -133,7 +178,9 @@ export function StockChart(props: Props) {
               'blur-xl grayscale-[0.5] opacity-80 pointer-events-none',
           )}
         >
-          {data.length > 0 && <ChartComponent data={data} />}
+          {data.length > 0 && (
+            <ChartComponent data={data} alertLevels={props.alerts ?? []} />
+          )}
         </div>
 
         {!isMarketOpen && (

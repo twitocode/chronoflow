@@ -2,20 +2,23 @@ package config
 
 import (
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type Config struct {
-	Host         string
-	Port         string
-	MarketAuxKey string
-	FinnhubKey   string
-	Log          *zap.Logger
-	DatabaseURL  string
-	GeminiApiKey string
-	JWTSecret    string
+	Host           string
+	Port           string
+	MarketAuxKey   string
+	FinnhubKey     string
+	Log            *zap.Logger
+	DatabaseURL    string
+	GeminiApiKey   string
+	JWTSecret      string
+	AllowedOrigins []string
+	RedisURL       string
 }
 
 func New(getenv func(string) string) *Config {
@@ -39,18 +42,48 @@ func New(getenv func(string) string) *Config {
 	if jwtSecret == "" {
 		jwtSecret = "secret-key-for-dev"
 	}
+	allowedOrigins := parseAllowedOrigins(getenv("ALLOWED_ORIGINS"))
+
+	redisURL := getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "localhost:6379"
+	}
+
 	log.Info("config loaded", zap.String("host", host), zap.String("port", port))
 
 	return &Config{
-		Host:         host,
-		Port:         port,
-		MarketAuxKey: marketAuxKey,
-		Log:          log,
-		DatabaseURL:  databaseUrl,
-		FinnhubKey:   finnhubKey,
-		GeminiApiKey: geminiKey,
-		JWTSecret:    jwtSecret,
+		Host:           host,
+		Port:           port,
+		MarketAuxKey:   marketAuxKey,
+		Log:            log,
+		DatabaseURL:    databaseUrl,
+		FinnhubKey:     finnhubKey,
+		GeminiApiKey:   geminiKey,
+		JWTSecret:      jwtSecret,
+		AllowedOrigins: allowedOrigins,
+		RedisURL:       redisURL,
 	}
+}
+
+func parseAllowedOrigins(value string) []string {
+	if value == "" {
+		return []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+	}
+
+	parts := strings.Split(value, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		origin := strings.TrimSpace(part)
+		if origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+
+	if len(origins) == 0 {
+		return []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+	}
+
+	return origins
 }
 
 func initLogger() *zap.Logger {

@@ -1,7 +1,7 @@
 'use client'
 
 import { Skeleton } from '#/components/ui/skeleton'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 
 interface NewsItem {
   title: string
@@ -33,9 +33,11 @@ export function NewsList({ news, isLoading, isError }: NewsListProps) {
   const displayNews = news.slice(0, 3)
 
   return (
-    <Card className="rounded-3xl border border-border shadow-sm">
-      <CardHeader>
-        <CardTitle className="font-semibold text-foreground">Recent News</CardTitle>
+    <Card className="rounded-2xl border border-border/80 bg-card/80 shadow-md backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="font-display text-lg font-semibold tracking-tight text-foreground">
+          Recent news
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -59,7 +61,7 @@ export function NewsList({ news, isLoading, isError }: NewsListProps) {
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-3 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors block"
+                className="block rounded-xl border border-transparent bg-muted/40 p-3 transition-colors hover:border-border hover:bg-muted/70"
               >
                 <p className="text-sm text-foreground leading-snug">{item.title}</p>
                 <p className="text-xs text-muted-foreground mt-1">

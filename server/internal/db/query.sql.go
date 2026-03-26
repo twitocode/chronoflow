@@ -7,7 +7,104 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const addTrackedStock = `-- name: AddTrackedStock :one
+WITH s AS (
+  INSERT INTO stock (symbol) VALUES (upper(trim($1::text)))
+  ON CONFLICT (symbol) DO UPDATE SET symbol = EXCLUDED.symbol
+  RETURNING id, symbol
+)
+,
+tracked AS (
+  INSERT INTO tracked_stock (stock_id, user_id)
+  SELECT s.id, $2::uuid
+  FROM s
+  ON CONFLICT (user_id, stock_id) DO UPDATE SET stock_id = EXCLUDED.stock_id
+  RETURNING id, stock_id, user_id, created_at
+)
+SELECT tracked.id, stock.symbol
+FROM tracked
+JOIN stock ON stock.id = tracked.stock_id
+`
+
+type AddTrackedStockParams struct {
+	Symbol string
+	UserID pgtype.UUID
+}
+
+type AddTrackedStockRow struct {
+	ID     int32
+	Symbol string
+}
+
+func (q *Queries) AddTrackedStock(ctx context.Context, arg AddTrackedStockParams) (AddTrackedStockRow, error) {
+	row := q.db.QueryRow(ctx, addTrackedStock, arg.Symbol, arg.UserID)
+	var i AddTrackedStockRow
+	err := row.Scan(&i.ID, &i.Symbol)
+	return i, err
+}
+
+const createStockAlert = `-- name: CreateStockAlert :one
+WITH s AS (
+  INSERT INTO stock (symbol) VALUES (upper(trim($1::text)))
+  ON CONFLICT (symbol) DO UPDATE SET symbol = EXCLUDED.symbol
+  RETURNING id
+),
+tracked AS (
+  INSERT INTO tracked_stock (stock_id, user_id)
+  SELECT s.id, $2::uuid
+  FROM s
+  ON CONFLICT (user_id, stock_id) DO NOTHING
+)
+,
+alert AS (
+  INSERT INTO stock_alert (stock_id, user_id, condition, target_price)
+  SELECT s.id, $2::uuid, lower(trim($3::text)), $4::float8
+  FROM s
+  ON CONFLICT (user_id, stock_id, condition, target_price) DO UPDATE
+  SET target_price = EXCLUDED.target_price
+  RETURNING id, stock_id, user_id, condition, target_price, created_at
+)
+SELECT alert.id, stock.symbol, alert.condition, alert.target_price, alert.created_at
+FROM alert
+JOIN stock ON stock.id = alert.stock_id
+`
+
+type CreateStockAlertParams struct {
+	Symbol      string
+	UserID      pgtype.UUID
+	Condition   string
+	TargetPrice float64
+}
+
+type CreateStockAlertRow struct {
+	ID          int32
+	Symbol      string
+	Condition   string
+	TargetPrice float64
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) CreateStockAlert(ctx context.Context, arg CreateStockAlertParams) (CreateStockAlertRow, error) {
+	row := q.db.QueryRow(ctx, createStockAlert,
+		arg.Symbol,
+		arg.UserID,
+		arg.Condition,
+		arg.TargetPrice,
+	)
+	var i CreateStockAlertRow
+	err := row.Scan(
+		&i.ID,
+		&i.Symbol,
+		&i.Condition,
+		&i.TargetPrice,
+		&i.CreatedAt,
+	)
+	return i, err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
@@ -25,6 +122,25 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	var i User
 	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
 	return i, err
+}
+
+const deleteStockAlertByID = `-- name: DeleteStockAlertByID :one
+DELETE FROM stock_alert
+WHERE id = $1
+  AND user_id = $2::uuid
+RETURNING id
+`
+
+type DeleteStockAlertByIDParams struct {
+	ID     int32
+	UserID pgtype.UUID
+}
+
+func (q *Queries) DeleteStockAlertByID(ctx context.Context, arg DeleteStockAlertByIDParams) (int32, error) {
+	row := q.db.QueryRow(ctx, deleteStockAlertByID, arg.ID, arg.UserID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const findByEmail = `-- name: FindByEmail :one
@@ -74,5 +190,118 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
+	return i, err
+}
+
+const listStockAlertsByUser = `-- name: ListStockAlertsByUser :many
+SELECT stock_alert.id, stock.symbol, stock_alert.condition, stock_alert.target_price, stock_alert.created_at
+FROM stock_alert
+JOIN stock ON stock.id = stock_alert.stock_id
+WHERE stock_alert.user_id = $1::uuid
+ORDER BY stock_alert.created_at DESC, stock_alert.id DESC
+`
+
+type ListStockAlertsByUserRow struct {
+	ID          int32
+	Symbol      string
+	Condition   string
+	TargetPrice float64
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) ListStockAlertsByUser(ctx context.Context, userID pgtype.UUID) ([]ListStockAlertsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listStockAlertsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStockAlertsByUserRow
+	for rows.Next() {
+		var i ListStockAlertsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Symbol,
+			&i.Condition,
+			&i.TargetPrice,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTrackedStocksByUser = `-- name: ListTrackedStocksByUser :many
+SELECT tracked_stock.id, stock.symbol
+FROM tracked_stock
+JOIN stock ON stock.id = tracked_stock.stock_id
+WHERE tracked_stock.user_id = $1::uuid
+ORDER BY stock.symbol ASC
+`
+
+type ListTrackedStocksByUserRow struct {
+	ID     int32
+	Symbol string
+}
+
+func (q *Queries) ListTrackedStocksByUser(ctx context.Context, userID pgtype.UUID) ([]ListTrackedStocksByUserRow, error) {
+	rows, err := q.db.Query(ctx, listTrackedStocksByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrackedStocksByUserRow
+	for rows.Next() {
+		var i ListTrackedStocksByUserRow
+		if err := rows.Scan(&i.ID, &i.Symbol); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeTrackedStockBySymbol = `-- name: RemoveTrackedStockBySymbol :one
+WITH deleted_alerts AS (
+  DELETE FROM stock_alert
+  USING stock
+  WHERE stock_alert.user_id = $1::uuid
+    AND stock_alert.stock_id = stock.id
+    AND stock.symbol = upper(trim($2::text))
+),
+removed AS (
+  DELETE FROM tracked_stock
+  USING stock
+  WHERE tracked_stock.user_id = $1::uuid
+    AND tracked_stock.stock_id = stock.id
+    AND stock.symbol = upper(trim($2::text))
+  RETURNING tracked_stock.id, tracked_stock.stock_id
+)
+SELECT removed.id, stock.symbol
+FROM removed
+JOIN stock ON stock.id = removed.stock_id
+`
+
+type RemoveTrackedStockBySymbolParams struct {
+	UserID pgtype.UUID
+	Symbol string
+}
+
+type RemoveTrackedStockBySymbolRow struct {
+	ID     int32
+	Symbol string
+}
+
+func (q *Queries) RemoveTrackedStockBySymbol(ctx context.Context, arg RemoveTrackedStockBySymbolParams) (RemoveTrackedStockBySymbolRow, error) {
+	row := q.db.QueryRow(ctx, removeTrackedStockBySymbol, arg.UserID, arg.Symbol)
+	var i RemoveTrackedStockBySymbolRow
+	err := row.Scan(&i.ID, &i.Symbol)
 	return i, err
 }

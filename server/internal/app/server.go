@@ -20,7 +20,7 @@ func NewServer(config *config.Config, services *Services) *chi.Mux {
 
 	// CORS middleware - MUST be first to handle preflight before any other middleware
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowedOrigins:   config.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Cookie", "X-Requested-With"},
 		ExposedHeaders:   []string{"Link", "Set-Cookie"},

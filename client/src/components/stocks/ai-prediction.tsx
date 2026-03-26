@@ -52,9 +52,9 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
   const VibeIcon = vibeConfig.icon
 
   return (
-    <div className="bg-card rounded-3xl p-6 border border-border shadow-sm mb-6 relative overflow-hidden group">
+    <div className="group relative mb-6 overflow-hidden rounded-2xl border border-border/80 bg-card/80 p-6 shadow-md backdrop-blur-sm">
       {/* Decorative background pulse */}
-      <div className="absolute -right-4 -top-4 size-32 bg-primary/5 blur-3xl rounded-full group-hover:bg-primary/10 transition-colors duration-500" />
+      <div className="absolute -right-4 -top-4 size-32 rounded-3xl bg-primary/5 blur-3xl transition-colors duration-500 group-hover:bg-primary/10" />
       
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
             <Sparkles className="size-4 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-foreground tracking-tight">Stock Mentor</h2>
+            <h2 className="font-display text-base font-semibold tracking-tight text-foreground">Stock Mentor</h2>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Powered by AI</p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
               Stock Sentiment
             </span>
             <div className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider shadow-sm",
+              "flex items-center gap-1.5 rounded-md border px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm",
               vibeConfig.bg, vibeConfig.color, vibeConfig.border
             )}>
               <VibeIcon className="size-3" />
@@ -94,7 +94,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
         </div>
       ) : isError ? (
         <div className="flex flex-col items-center justify-center py-8 text-center bg-secondary/20 rounded-2xl border border-dashed border-border/50">
-          <div className="size-10 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
+          <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-secondary/50">
             <Info className="size-5 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium text-foreground">Analysis Unavailable</p>

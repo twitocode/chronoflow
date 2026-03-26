@@ -10,13 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
 	"twitocode/chronoflow/internal/app"
 	"twitocode/chronoflow/internal/config"
 	"twitocode/chronoflow/internal/db"
+	"twitocode/chronoflow/internal/pricestore"
 	"twitocode/chronoflow/internal/ws"
 )
 
@@ -30,16 +31,26 @@ func run(ctx context.Context, getenv func(string) string) error {
 
 	cfg := config.New(getenv)
 
-	conn, err := pgx.Connect(ctx, cfg.DatabaseURL)
 	cfg.Log.Info("connecting to database")
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create connection pool: %w", err)
 	}
-	cfg.Log.Info("database connected")
-	defer conn.Close(ctx)
+	defer pool.Close()
 
-	queries := db.New(conn)
-	services := app.NewServices(cfg, queries)
+	if err := pool.Ping(ctx); err != nil {
+		return fmt.Errorf("unable to ping database: %w", err)
+	}
+	cfg.Log.Info("database connected (pool)")
+
+	ps, err := pricestore.New(cfg.RedisURL, cfg.Log)
+	if err != nil {
+		return fmt.Errorf("unable to connect to redis: %w", err)
+	}
+	defer ps.Close()
+
+	queries := db.New(pool)
+	services := app.NewServices(cfg, queries, ps)
 	chiRouter := app.NewServer(cfg, services)
 	go services.Hub.Run()
 	streamer := ws.NewFinnhubStreamer(services.Hub, services.Stock)

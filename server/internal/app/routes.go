@@ -12,11 +12,18 @@ func addRoutes(r *chi.Mux, services *Services) {
 		r.Get("/news", handlers.HandleStockNews(services.News))
 		r.Get("/stocks/aggregate", handlers.HandleStockInfoAggregate(services.Stock, services.Hub))
 		r.Get("/stocks/ws", handlers.HandleStockWS(services.Stock, services.Hub))
-		
+		r.Get("/stocks/history", handlers.HandleStockHistory(services.PriceStore))
+
 		r.Group(func(r chi.Router) {
 			r.Use(mw.RequireAuth)
 			r.Get("/analysis", handlers.HandleStockAnalysis(services.Analysis))
 			r.Get("/auth/me", handlers.HandleCurrentUser())
+			r.Get("/stocks/tracked", handlers.HandleListTrackedStocks(services.Alerts))
+			r.Post("/stocks/tracked", handlers.HandleAddTrackedStock(services.Alerts))
+			r.Delete("/stocks/tracked/{symbol}", handlers.HandleDeleteTrackedStock(services.Alerts))
+			r.Get("/alerts", handlers.HandleListStockAlerts(services.Alerts))
+			r.Post("/alerts", handlers.HandleCreateStockAlert(services.Alerts))
+			r.Delete("/alerts/{id}", handlers.HandleDeleteStockAlert(services.Alerts))
 		})
 
 		r.Get("/auth/{email}", handlers.HandleCheckEmail(services.Auth))

@@ -9,18 +9,24 @@ import (
 )
 
 type Stock struct {
-	ID int32
+	ID     int32
+	Symbol string
 }
 
-type StockTrackedStock struct {
-	StockID        pgtype.Int4
-	TrackedStockID pgtype.Int4
+type StockAlert struct {
+	ID          int32
+	StockID     int32
+	UserID      pgtype.UUID
+	Condition   string
+	TargetPrice float64
+	CreatedAt   pgtype.Timestamptz
 }
 
 type TrackedStock struct {
-	ID      int32
-	StockID pgtype.Int4
-	UserID  pgtype.UUID
+	ID        int32
+	StockID   int32
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 type User struct {

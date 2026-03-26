@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
-import { zodValidator } from '@tanstack/zod-form-adapter'
-import { z } from 'zod'
-import { TextField, SubscribeButton } from '#/components/demo.FormComponents'
+import { TextField } from '#/components/demo/text-field'
+import { SubscribeButton } from '#/components/demo/subscribe-button'
 import { formContext, fieldContext } from '#/hooks/demo.form-context'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '#/components/ui/card'
 import { useMutation } from '@tanstack/react-query'
@@ -26,7 +25,7 @@ function LoginComponent() {
   }, [isLoading, navigate, user])
 
   const loginMutation = useMutation({
-    mutationFn: async (values: z.infer<typeof loginSchema>) => {
+    mutationFn: async (values: { email: string; password: string }) => {
       return apiPost('/api/v1/auth/login', values)
     },
     onSuccess: (data) => {
@@ -35,19 +34,10 @@ function LoginComponent() {
     },
   })
 
-  const loginSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-  })
-
   const form = useForm({
     defaultValues: {
       email: '',
       password: '',
-    },
-    validatorAdapter: zodValidator(),
-    validators: {
-      onChange: loginSchema,
     },
     onSubmit: async ({ value }) => {
       await loginMutation.mutateAsync(value)
@@ -63,12 +53,12 @@ function LoginComponent() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
-          <CardDescription>
-            Enter your email and password to access your account.
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-lg backdrop-blur-sm">
+        <CardHeader className="space-y-1">
+          <CardTitle className="font-display text-2xl font-semibold tracking-tight">Sign in</CardTitle>
+          <CardDescription className="text-base">
+            Use your email and password to open your workspace.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { zodValidator } from '@tanstack/zod-form-adapter'
 import { z } from 'zod'
-import { TextField, SubscribeButton } from '#/components/demo.FormComponents'
+import { TextField } from '#/components/demo/text-field'
+import { SubscribeButton } from '#/components/demo/subscribe-button'
 import { formContext, fieldContext } from '#/hooks/demo.form-context'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '#/components/ui/card'
 import { useMutation } from '@tanstack/react-query'
@@ -71,12 +72,12 @@ function RegisterComponent() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Register</CardTitle>
-          <CardDescription>
-            Create a new account to get started.
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-lg backdrop-blur-sm">
+        <CardHeader className="space-y-1">
+          <CardTitle className="font-display text-2xl font-semibold tracking-tight">Create account</CardTitle>
+          <CardDescription className="text-base">
+            Start tracking symbols and alerts in a few seconds.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { apiGet } from '#/lib/api'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGet, apiPost } from '#/lib/api'
 import { topCompanies } from '#/lib/data'
+import { CreateAlertDialog } from './create-alert-dialog'
 import { StockHeader } from './stock-header'
 import { StockChart } from './stock-chart'
 import { AIPrediction } from './ai-prediction'
@@ -34,11 +35,24 @@ interface AnalysisResponse {
   [key: string]: any
 }
 
+interface ApiResponse<T> {
+  data: T
+}
+
+type StockAlertRow = {
+  id: number
+  symbol: string
+  condition: string
+  target_price: number
+  created_at: string
+}
+
 function companyFromSymbol(symbol: string): string | undefined {
   return topCompanies.find((x) => x.symbol === symbol)?.name
 }
 
 export function StockDashboard() {
+  const queryClient = useQueryClient()
   const [symbol, setSymbol] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('lastViewedSymbol') || 'AAPL'
@@ -47,8 +61,8 @@ export function StockDashboard() {
   })
   const [companyName, setCompanyName] = useState(() => {
     if (typeof window !== 'undefined') {
-      const symbol = localStorage.getItem('lastViewedSymbol') || 'AAPL'
-      return companyFromSymbol(symbol) || "Apple"
+      const initialSymbol = localStorage.getItem('lastViewedSymbol') || 'AAPL'
+      return companyFromSymbol(initialSymbol) || 'Apple'
     }
     return 'Apple'
   })
@@ -94,16 +108,72 @@ export function StockDashboard() {
     },
   })
 
+  const [createAlertOpen, setCreateAlertOpen] = useState(false)
+
+  const { data: alertsResponse } = useQuery<ApiResponse<StockAlertRow[]>>({
+    queryKey: ['stock-alerts'],
+    queryFn: () => apiGet('/api/v1/alerts'),
+    staleTime: 30 * 1000,
+  })
+
+  const alertCountBySymbol = useMemo(() => {
+    const r: Record<string, number> = {}
+    for (const a of alertsResponse?.data ?? []) {
+      r[a.symbol] = (r[a.symbol] ?? 0) + 1
+    }
+    return r
+  }, [alertsResponse])
+
+  const alertsForChart = useMemo(() => {
+    if (!alertsResponse?.data) return []
+    return alertsResponse.data
+      .filter((a) => a.symbol === symbol)
+      .map((a) => ({
+        id: a.id,
+        targetPrice: a.target_price,
+        condition: a.condition,
+      }))
+  }, [alertsResponse, symbol])
+
+  const createAlertMutation = useMutation<
+    unknown,
+    Error,
+    { symbol: string; condition: string; targetPrice: number }
+  >({
+    mutationFn: (input: { symbol: string; condition: string; targetPrice: number }) =>
+      apiPost('/api/v1/alerts', {
+        symbol: input.symbol,
+        condition: input.condition,
+        target_price: input.targetPrice,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tracked-stocks'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] })
+      setCreateAlertOpen(false)
+    },
+  })
+
   return (
-    <div className="min-h-screen bg-background overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="min-h-full w-full min-w-0 overflow-y-auto">
+      <div className="mx-auto w-full min-w-0 max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <StockHeader
           symbol={symbol}
           companyName={companyName}
+          alertCountBySymbol={alertCountBySymbol}
           onSymbolChange={handleSymbolChange}
+          onOpenCreateAlert={() => setCreateAlertOpen(true)}
         />
 
-        <StockChart symbol={symbol}/>
+        <CreateAlertDialog
+          symbol={symbol}
+          open={createAlertOpen}
+          isPending={createAlertMutation.isPending}
+          errorMessage={createAlertMutation.isError ? createAlertMutation.error.message : null}
+          onOpenChange={setCreateAlertOpen}
+          onSubmit={(input) => createAlertMutation.mutate(input)}
+        />
+
+        <StockChart symbol={symbol} alerts={alertsForChart} />
 
         <AIPrediction
           prediction={analysisData}

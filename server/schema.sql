@@ -6,20 +6,27 @@ CREATE TABLE
   );
 
 CREATE TABLE
-  IF NOT EXISTS tracked_stock (
+  IF NOT EXISTS stock (
     id SERIAL PRIMARY KEY,
-    stock_id SERIAL,
-    user_id UUID,
-    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id)
+    symbol TEXT UNIQUE NOT NULL
   );
 
 CREATE TABLE
-  IF NOT EXISTS stock (id SERIAL PRIMARY KEY);
+  IF NOT EXISTS tracked_stock (
+    id SERIAL PRIMARY KEY,
+    stock_id INTEGER NOT NULL REFERENCES stock (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, stock_id)
+  );
 
 CREATE TABLE
-  IF NOT EXISTS stock_tracked_stock (
-    stock_id SERIAL,
-    tracked_stock_id SERIAL,
-    CONSTRAINT fk_stock FOREIGN KEY (stock_id) REFERENCES stock (id),
-    CONSTRAINT fk_tracked_stock FOREIGN KEY (tracked_stock_id) REFERENCES tracked_stock (id)
+  IF NOT EXISTS stock_alert (
+    id SERIAL PRIMARY KEY,
+    stock_id INTEGER NOT NULL REFERENCES stock (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    condition TEXT NOT NULL CHECK (condition IN ('above', 'below')),
+    target_price DOUBLE PRECISION NOT NULL CHECK (target_price > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, stock_id, condition, target_price)
   );

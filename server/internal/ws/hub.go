@@ -1,9 +1,12 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
+
+	"twitocode/chronoflow/internal/pricestore"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,9 +25,10 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 
-	// symbolSubscribers maps a stock symbol to a set of clients interested in it
 	symbolSubscribers map[string]map[*Client]bool
 	mu                sync.RWMutex
+
+	priceStore *pricestore.PriceStore
 }
 
 type Client struct {
@@ -35,13 +39,14 @@ type Client struct {
 	symbols map[string]bool
 }
 
-func NewHub() *Hub {
+func NewHub(ps *pricestore.PriceStore) *Hub {
 	return &Hub{
 		broadcast:         make(chan []byte),
 		register:          make(chan *Client),
 		unregister:        make(chan *Client),
 		clients:           make(map[*Client]bool),
 		symbolSubscribers: make(map[string]map[*Client]bool),
+		priceStore:        ps,
 	}
 }
 
@@ -89,8 +94,17 @@ func (h *Hub) Run() {
 				continue
 			}
 
+			for _, trade := range update.Data {
+				if h.priceStore != nil {
+					h.priceStore.Append(context.Background(), pricestore.Trade{
+						Symbol: trade.Symbol,
+						Price:  trade.Price,
+						Time:   trade.Time,
+					})
+				}
+			}
+
 			h.mu.RLock()
-			// Relay only to interested clients
 			for _, trade := range update.Data {
 				if subs, ok := h.symbolSubscribers[trade.Symbol]; ok {
 					data, _ := json.Marshal(map[string]interface{}{
@@ -103,7 +117,6 @@ func (h *Hub) Run() {
 						select {
 						case client.Send <- data:
 						default:
-							// Handle slow client
 						}
 					}
 				}

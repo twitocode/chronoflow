@@ -40,3 +40,16 @@ export function apiPost<T>(endpoint: string, body?: unknown, options?: Omit<Fetc
     body: body ? JSON.stringify(body) : undefined,
   })
 }
+
+export function apiDelete<T>(endpoint: string, options?: Omit<FetchOptions, 'method'>): Promise<T> {
+  return apiFetch<T>(endpoint, {
+    ...options,
+    method: 'DELETE',
+  })
+}
+
+export function apiWebSocketUrl(endpoint: string): string {
+  const url = new URL(endpoint, API_BASE_URL)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
+}
