@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,7 +23,8 @@ import (
 )
 
 func run(ctx context.Context, getenv func(string) string) error {
-	if err := godotenv.Load(); err != nil {
+	// Optional local dev file; production (e.g. Render) uses injected env only.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("could not load .env: %w", err)
 	}
 
