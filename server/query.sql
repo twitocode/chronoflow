@@ -71,7 +71,7 @@ tracked AS (
   INSERT INTO tracked_stock (stock_id, user_id)
   SELECT s.id, sqlc.arg(user_id)::uuid
   FROM s
-  ON CONFLICT (user_id, stock_id) DO NOTHINpG
+  ON CONFLICT (user_id, stock_id) DO NOTHING
 )
 ,
 alert AS (

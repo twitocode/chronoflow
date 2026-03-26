@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -28,10 +29,22 @@ type PriceStore struct {
 	counts map[string]int // per-symbol append counter for periodic pruning
 }
 
+// redisClientOptions builds go-redis options from either a URL (redis:// or rediss://)
+// or a legacy host:port address (e.g. localhost:6379).
+func redisClientOptions(addr string) (*redis.Options, error) {
+	addr = strings.TrimSpace(addr)
+	if strings.HasPrefix(addr, "redis://") || strings.HasPrefix(addr, "rediss://") {
+		return redis.ParseURL(addr)
+	}
+	return &redis.Options{Addr: addr}, nil
+}
+
 func New(addr string, logger *zap.Logger) (*PriceStore, error) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: addr,
-	})
+	opts, err := redisClientOptions(addr)
+	if err != nil {
+		return nil, fmt.Errorf("redis options: %w", err)
+	}
+	rdb := redis.NewClient(opts)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -40,7 +53,7 @@ func New(addr string, logger *zap.Logger) (*PriceStore, error) {
 		return nil, fmt.Errorf("redis ping failed: %w", err)
 	}
 
-	logger.Info("price store connected to redis", zap.String("addr", addr))
+	logger.Info("price store connected to redis", zap.String("addr", opts.Addr))
 
 	return &PriceStore{
 		rdb:    rdb,
