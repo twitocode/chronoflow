@@ -11,7 +11,12 @@ interface ChartDataPoint {
   value: number
 }
 
-const getIsMarketOpen = () => {
+
+function isMarketOpenForced(): boolean {
+  return import.meta.env.VITE_FORCE_MARKET_OPEN === 'true'
+}
+
+function getScheduleMarketOpen(): boolean {
   const now = new Date()
   const nyDate = new Date(
     now.toLocaleString('en-US', { timeZone: 'America/New_York' }),
@@ -28,6 +33,9 @@ const getIsMarketOpen = () => {
   return !isWeekend && isOpenTime
 }
 
+const getIsMarketOpen = () =>
+  isMarketOpenForced() || getScheduleMarketOpen()
+
 export type StockChartAlertLevel = {
   id: number
   targetPrice: number
@@ -43,6 +51,10 @@ interface Props {
 export function StockChart(props: Props) {
   const [data, setData] = useState<ChartDataPoint[]>([])
   const [isMarketOpen, setIsMarketOpen] = useState(getIsMarketOpen())
+
+  useEffect(() => {
+    setIsMarketOpen(getIsMarketOpen())
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
