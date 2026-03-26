@@ -75,7 +75,7 @@ function RegisterComponent() {
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="font-display text-2xl font-semibold tracking-tight">Create account</CardTitle>
+          <CardTitle className="font-display text-2xl font-bold tracking-tight">Create account</CardTitle>
           <CardDescription className="text-base">
             Start tracking symbols and alerts in a few seconds.
           </CardDescription>

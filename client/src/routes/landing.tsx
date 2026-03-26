@@ -198,7 +198,9 @@ function LandingPage() {
                   <div>
                     <span className="text-muted-foreground flex flex-col">
                       <span>MSFT</span>
-                      <span className="text-emerald-400 animate-pulse">Live</span>
+                      <span className="text-emerald-400 animate-pulse">
+                        Live
+                      </span>
                     </span>
                   </div>
                   <div className="min-w-0 text-right">
@@ -311,7 +313,7 @@ function LandingPage() {
       <footer className="border-t border-border/60 py-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row">
           <p className="text-center text-xs text-muted-foreground sm:text-left">
-            Educational use — not investment advice.
+            AI Predictions are for learning, not financial advice.
           </p>
           <a
             href="https://github.com/twitocode"
