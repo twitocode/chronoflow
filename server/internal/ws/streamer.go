@@ -19,6 +19,11 @@ func NewFinnhubStreamer(hub *Hub, ss *service.StockService) *FinnhubStreamer {
 }
 
 func (fs *FinnhubStreamer) Connect() {
+	if fs.ss.ApiKey == "" {
+		fs.ss.Logger.Warn("FINNHUB_KEY is empty; skipping Finnhub WebSocket (set env in production)")
+		return
+	}
+
 	url := fmt.Sprintf("wss://ws.finnhub.io?token=%s", fs.ss.ApiKey)
 
 	for {

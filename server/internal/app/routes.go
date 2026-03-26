@@ -1,6 +1,8 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 
 	"twitocode/chronoflow/internal/handlers"
@@ -8,6 +10,15 @@ import (
 )
 
 func addRoutes(r *chi.Mux, services *Services) {
+	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(`{"ok":true,"service":"chronoflow-api"}`))
+	})
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(`{"status":"healthy"}`))
+	})
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/news", handlers.HandleStockNews(services.News))
 		r.Get("/stocks/aggregate", handlers.HandleStockInfoAggregate(services.Stock, services.Hub))
