@@ -117,7 +117,7 @@ export function AIPrediction({ prediction, isLoading, isError }: AIPredictionPro
                 <Info className="size-3" /> Mentor Tip
               </span>
               <p className="text-[11px] text-muted-foreground leading-normal italic">
-                "{prediction?.beginner_tip || "Learn as you go—every stock has a story."}"
+                "{prediction?.beginner_tip || "Every stock has a story to learn."}"
               </p>
             </div>
             

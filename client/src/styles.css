@@ -45,7 +45,7 @@
   --font-display: 'Syne', 'Funnel Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
-  /* Legacy names used by a few components — map to theme */
+  /* Legacy names used by a few components, mapped to theme */
   --sea-ink: var(--foreground);
   --sea-ink-soft: var(--muted-foreground);
   --chip-line: var(--border);

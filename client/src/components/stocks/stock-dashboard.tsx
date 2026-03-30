@@ -9,6 +9,7 @@ import { StockHeader } from './stock-header'
 import { StockChart } from './stock-chart'
 import { AIPrediction } from './ai-prediction'
 import { NewsList } from './news-list'
+import { useToast } from '#/components/ui/toast-provider'
 
 interface NewsItem {
   title: string
@@ -53,6 +54,7 @@ function companyFromSymbol(symbol: string): string | undefined {
 
 export function StockDashboard() {
   const queryClient = useQueryClient()
+  const { notify } = useToast()
   const [symbol, setSymbol] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('lastViewedSymbol') || 'AAPL'
@@ -146,10 +148,14 @@ export function StockDashboard() {
         condition: input.condition,
         target_price: input.targetPrice,
       }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tracked-stocks'] })
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] })
       setCreateAlertOpen(false)
+      notify({
+        title: 'Alert created',
+        description: `${variables.symbol} will trigger when price goes ${variables.condition} $${variables.targetPrice.toFixed(2)}`,
+      })
     },
   })
 

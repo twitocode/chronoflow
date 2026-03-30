@@ -45,7 +45,7 @@ function useLiveSymbolQuote(symbol: string) {
           setData(initial)
         }
       } catch {
-        // history unavailable — live ticks may still populate
+        // history unavailable, but live ticks may still populate
       }
 
       if (cancelled) return
@@ -207,7 +207,7 @@ function LandingPage() {
                     <div className="font-mono-nums font-semibold text-foreground">
                       {msft.lastPrice != null
                         ? `$${msft.lastPrice.toFixed(2)}`
-                        : '—'}
+                        : 'N/A'}
                     </div>
                     {msft.percentChange != null && (
                       <div
