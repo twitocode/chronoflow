@@ -1,14 +1,21 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useEffect } from 'react'
-import { useForm } from '@tanstack/react-form'
-import { zodValidator } from '@tanstack/zod-form-adapter'
-import { z } from 'zod'
-import { TextField } from '#/components/demo/text-field'
 import { SubscribeButton } from '#/components/demo/subscribe-button'
-import { formContext, fieldContext } from '#/hooks/demo.form-context'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '#/components/ui/card'
-import { useMutation } from '@tanstack/react-query'
+import { TextField } from '#/components/demo/text-field'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '#/components/ui/card'
+import { fieldContext, formContext } from '#/hooks/demo.form-context'
 import { apiPost } from '#/lib/api'
+import { useForm } from '@tanstack/react-form'
+import { useMutation } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-form-adapter'
+import { useEffect } from 'react'
+import { z } from 'zod'
 
 export const Route = createFileRoute('/register')({
   component: RegisterComponent,
@@ -39,14 +46,18 @@ function RegisterComponent() {
     },
   })
 
-  const registerSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  })
+  const registerSchema = z
+    .object({
+      email: z.string().email('Invalid email address'),
+      password: z.string().min(6, 'Password must be at least 6 characters'),
+      confirmPassword: z
+        .string()
+        .min(6, 'Password must be at least 6 characters'),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords don't match",
+      path: ['confirmPassword'],
+    })
 
   const form = useForm({
     defaultValues: {
@@ -65,9 +76,11 @@ function RegisterComponent() {
 
   if (isLoading || user) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col">
+      <div className="min-h-screen flex items-center justify-center flex-col space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span>Loading from Server (may take a while)</span>
+        <span className="text-primary font-medium">
+          Loading from Server (may take a while)
+        </span>
       </div>
     )
   }
@@ -76,7 +89,9 @@ function RegisterComponent() {
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="font-display text-2xl font-bold tracking-tight">Create account</CardTitle>
+          <CardTitle className="font-display text-2xl font-bold tracking-tight">
+            Create account
+          </CardTitle>
           <CardDescription className="text-base">
             Start tracking symbols and alerts in a few seconds.
           </CardDescription>

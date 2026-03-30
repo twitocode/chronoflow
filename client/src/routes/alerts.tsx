@@ -1,18 +1,18 @@
 'use client'
 
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Trash2 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
+import { useEffect, useMemo } from 'react'
 
-import { AlertsPageHeader } from '#/components/stocks/alerts-page-header'
 import {
   alertsCardVariants,
   alertsEase,
   alertsListContainerVariants,
   alertsListItemVariants,
 } from '#/components/motion/alerts-motion'
+import { AlertsPageHeader } from '#/components/stocks/alerts-page-header'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -21,8 +21,8 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
-import { apiDelete, apiGet } from '#/lib/api'
 import { useAuth } from '#/hooks/use-auth'
+import { apiDelete, apiGet } from '#/lib/api'
 import { getLogoUrl, topCompanies } from '#/lib/data'
 
 type StockAlert = {
@@ -69,7 +69,9 @@ function AlertsRoute() {
 
   const sortedAlerts = useMemo(() => {
     if (!alertsResponse?.data) return []
-    return [...alertsResponse.data].sort((a, b) => a.symbol.localeCompare(b.symbol))
+    return [...alertsResponse.data].sort((a, b) =>
+      a.symbol.localeCompare(b.symbol),
+    )
   }, [alertsResponse])
 
   const deleteAlertMutation = useMutation({
@@ -81,9 +83,11 @@ function AlertsRoute() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col">
+      <div className="min-h-screen flex items-center justify-center flex-col space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span>Loading from Server (may take a while)</span>
+        <span className="text-primary font-medium">
+          Loading from Server (may take a while)
+        </span>
       </div>
     )
   }
@@ -98,13 +102,15 @@ function AlertsRoute() {
       >
         <Card className="border-border/80 bg-card/80 shadow-md backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-2">
-            <CardTitle className="text-lg font-semibold tracking-tight">All thresholds</CardTitle>
+            <CardTitle className="text-lg font-semibold tracking-tight">
+              All thresholds
+            </CardTitle>
             <CardDescription>
-              Create new alerts from the dashboard with Save alert while viewing a stock.
+              Create new alerts from the dashboard with Save alert while viewing
+              a stock.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-
             {alertsLoading ? (
               <p className="text-sm text-muted-foreground">Loading alerts...</p>
             ) : alertsError ? (
@@ -114,7 +120,9 @@ function AlertsRoute() {
             ) : sortedAlerts.length ? (
               <motion.div
                 className="space-y-3"
-                variants={reduceMotion ? undefined : alertsListContainerVariants}
+                variants={
+                  reduceMotion ? undefined : alertsListContainerVariants
+                }
                 initial={reduceMotion ? false : 'hidden'}
                 animate={reduceMotion ? undefined : 'visible'}
               >
@@ -161,9 +169,12 @@ function AlertsRoute() {
                 animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
                 transition={alertsEase}
               >
-                <p className="text-base font-semibold text-foreground">No alerts yet</p>
+                <p className="text-base font-semibold text-foreground">
+                  No alerts yet
+                </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Open a stock from the dashboard and use the Save alert button to create your first one.
+                  Open a stock from the dashboard and use the Save alert button
+                  to create your first one.
                 </p>
               </motion.div>
             )}

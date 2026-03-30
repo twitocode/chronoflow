@@ -1,12 +1,18 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useEffect } from 'react'
-import { useForm } from '@tanstack/react-form'
-import { TextField } from '#/components/demo/text-field'
 import { SubscribeButton } from '#/components/demo/subscribe-button'
-import { formContext, fieldContext } from '#/hooks/demo.form-context'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '#/components/ui/card'
-import { useMutation } from '@tanstack/react-query'
+import { TextField } from '#/components/demo/text-field'
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '#/components/ui/card'
+import { fieldContext, formContext } from '#/hooks/demo.form-context'
 import { apiPost } from '#/lib/api'
+import { useForm } from '@tanstack/react-form'
+import { useMutation } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/login')({
   component: LoginComponent,
@@ -46,9 +52,11 @@ function LoginComponent() {
 
   if (isLoading || user) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col">
+      <div className="min-h-screen flex items-center justify-center flex-col space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span>Loading from Server (may take a while)</span>
+        <span className="text-primary font-medium">
+          Loading from Server (may take a while)
+        </span>
       </div>
     )
   }
@@ -57,8 +65,9 @@ function LoginComponent() {
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="font-display text-2xl font-bold tracking-tight">Sign in</CardTitle>
-
+          <CardTitle className="font-display text-2xl font-bold tracking-tight">
+            Sign in
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <formContext.Provider value={form}>
